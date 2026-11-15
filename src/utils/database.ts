@@ -246,16 +246,23 @@ export const upsertUser = (user: UserUpsertInput): void => {
 
 /**
  * Mueve los datos del usuario local al iniciar sesión con Google para no
- * perder lo que se capturó antes de tener cuenta.
+ * perder lo que se capturó antes de tener cuenta. Devuelve el perfil local
+ * para conservar el nombre del negocio y el onboarding.
  */
-export const mergeLocalUserInto = (targetUserId: string): void => {
-  if (!targetUserId || targetUserId === LOCAL_USER_ID) return;
+export const mergeLocalUserInto = (
+  targetUserId: string
+): { businessName: string | null; businessType: string | null; onboardingCompleted: boolean } | null => {
+  if (!targetUserId || targetUserId === LOCAL_USER_ID) return null;
 
-  const localUser = db.getFirstSync<{ id: string }>(
-    'SELECT id FROM users WHERE id = ?',
+  const localUser = db.getFirstSync<{
+    business_name: string | null;
+    business_type: string | null;
+    onboarding_completed: number;
+  }>(
+    'SELECT business_name, business_type, onboarding_completed FROM users WHERE id = ?',
     [LOCAL_USER_ID]
   );
-  if (!localUser) return;
+  if (!localUser) return null;
 
   db.execSync('BEGIN TRANSACTION');
   try {
@@ -264,11 +271,64 @@ export const mergeLocalUserInto = (targetUserId: string): void => {
     db.runSync('UPDATE expenses SET user_id = ? WHERE user_id = ?', [targetUserId, LOCAL_USER_ID]);
     db.runSync('UPDATE tasks SET user_id = ? WHERE user_id = ?', [targetUserId, LOCAL_USER_ID]);
     db.runSync('DELETE FROM users WHERE id = ?', [LOCAL_USER_ID]);
+
+    // Conserva el perfil del negocio capturado en modo local.
+    db.runSync(
+      `UPDATE users SET
+         business_name = COALESCE(business_name, ?),
+         business_type = COALESCE(business_type, ?),
+         onboarding_completed = MAX(onboarding_completed, ?),
+         updated_at = ?
+       WHERE id = ?`,
+      [
+        localUser.business_name,
+        localUser.business_type,
+        localUser.onboarding_completed ? 1 : 0,
+        getCurrentDateTime(),
+        targetUserId,
+      ]
+    );
     db.execSync('COMMIT');
   } catch (error) {
     db.execSync('ROLLBACK');
     throw error;
   }
+
+  return {
+    businessName: localUser.business_name,
+    businessType: localUser.business_type,
+    onboardingCompleted: Boolean(localUser.onboarding_completed),
+  };
+};
+
+/** Recupera el perfil local guardado para restaurarlo al volver a entrar. */
+export const getStoredLocalUser = (): {
+  name: string;
+  email: string;
+  businessName?: string;
+  businessType?: string;
+  onboardingCompleted: boolean;
+} | null => {
+  initDatabase();
+  const row = db.getFirstSync<{
+    name: string;
+    email: string;
+    business_name: string | null;
+    business_type: string | null;
+    onboarding_completed: number;
+  }>(
+    'SELECT name, email, business_name, business_type, onboarding_completed FROM users WHERE id = ?',
+    [LOCAL_USER_ID]
+  );
+  if (!row) return null;
+
+  return {
+    name: row.name,
+    email: row.email,
+    businessName: row.business_name ?? undefined,
+    businessType: row.business_type ?? undefined,
+    onboardingCompleted: Boolean(row.onboarding_completed),
+  };
 };
 
 export default db;

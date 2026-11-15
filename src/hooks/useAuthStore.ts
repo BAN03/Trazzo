@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   LOCAL_USER_EMAIL,
   LOCAL_USER_ID,
+  getStoredLocalUser,
   initDatabase,
   mergeLocalUserInto,
   upsertUser,
@@ -94,7 +95,15 @@ const signIn = (user: AuthUser): AuthUser => {
 
   // Si se había usado el modo local, conserva esos datos al entrar con Google.
   if (user.id !== LOCAL_USER_ID) {
-    mergeLocalUserInto(user.id);
+    const migrated = mergeLocalUserInto(user.id);
+    if (migrated) {
+      return {
+        ...user,
+        businessName: user.businessName ?? migrated.businessName ?? undefined,
+        businessType: user.businessType ?? migrated.businessType ?? undefined,
+        onboardingCompleted: user.onboardingCompleted || migrated.onboardingCompleted,
+      };
+    }
   }
 
   return user;
@@ -128,7 +137,15 @@ export const useAuthStore = create<AuthState>()(
           set({ isAuthenticated: true });
           return;
         }
-        const user = signIn(createLocalUser());
+
+        // Recupera el perfil que ya se había capturado en este dispositivo
+        // para no pedir el tour ni borrar el nombre del negocio.
+        const stored = getStoredLocalUser();
+        const user = signIn(
+          stored
+            ? { id: LOCAL_USER_ID, ...stored }
+            : createLocalUser()
+        );
         set({ user, isAuthenticated: true });
       },
 
