@@ -1,11 +1,25 @@
-'use client';
-
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Keyboard, Alert, Platform } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useColorScheme } from 'react-native';
-import { useAuthStore } from '../../hooks/useAuthStore';
-import { useDatabase } from '../../hooks/useDatabase';
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { router } from 'expo-router';
+import { useAuthStore } from '../hooks/useAuthStore';
+import { useDatabase } from '../hooks/useDatabase';
+import { DatePickerModal } from './DatePickerModal';
+import {
+  addDays,
+  formatDateKeyLong,
+  getMonthBounds,
+  toDateKey,
+  todayKey,
+} from '../utils/date';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -13,97 +27,146 @@ const currencyFormatter = new Intl.NumberFormat('es-MX', {
   minimumFractionDigits: 2,
 });
 
-const formatDateForDB = (date: Date) => {
-  return date.toISOString().split('T')[0];
-};
-
 const PAYMENT_METHODS = [
   { value: 'efectivo', label: 'Efectivo', icon: '💵' },
   { value: 'transferencia', label: 'Transferencia', icon: '📱' },
   { value: 'tarjeta', label: 'Tarjeta', icon: '💳' },
   { value: 'otro', label: 'Otro', icon: '📦' },
-];
+] as const;
 
-export default function NewSaleScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const { user } = useAuthStore();
+type PaymentMethod = (typeof PAYMENT_METHODS)[number]['value'];
+
+interface DraftItem {
+  key: string;
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  cost_price: number;
+}
+
+interface SaleFormProps {
+  mode: 'create' | 'edit';
+  saleId?: string;
+}
+
+const makeKey = () => `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+const digitsOnly = (value: string) => value.replace(/[^0-9]/g, '');
+
+export function SaleForm({ mode, saleId }: SaleFormProps) {
+  const isEditing = mode === 'edit';
+  const user = useAuthStore((state) => state.user);
   const db = useDatabase();
-  const params = useLocalSearchParams();
-  const isEditing = !!params.id;
+  const userId = user?.id;
 
-  const [date, setDate] = useState(formatDateForDB(new Date()));
+  const [date, setDate] = useState(todayKey());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState('1');
-  const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'transferencia' | 'tarjeta' | 'otro'>('efectivo');
-  const [items, setItems] = useState<Array<{
-    id: string;
-    product_id: string;
-    product_name: string;
-    quantity: number;
-    unit_price: number;
-    total_price: number;
-    cost_price: number;
-  }>>([]);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
+  const [items, setItems] = useState<DraftItem[]>([]);
+  const [originalQuantities, setOriginalQuantities] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingSale, setLoadingSale] = useState(isEditing);
+  const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState('');
 
-  const userId = user?.id;
+  const minimumDate = useMemo(() => toDateKey(addDays(new Date(), -90)), []);
+  const maximumDate = todayKey();
 
-  // Load products
   const products = useMemo(() => {
     if (!userId || !db.initialized) return [];
     return db.getProducts(userId, 'product');
   }, [userId, db.initialized]);
 
-  // Top products for quick access
-  const topProducts = useMemo(() => products.slice(0, 5), [products]);
+  const topProducts = useMemo(() => {
+    if (!userId || !db.initialized) return products.slice(0, 5);
+    const { start, end } = getMonthBounds(new Date());
+    try {
+      const ranked = db.getTopProducts(userId, start, end, 6);
+      const seen = new Set<string>();
+      const result = [] as typeof products;
+      for (const row of ranked) {
+        const product = products.find((p) => p.id === row.product_id);
+        if (product && !seen.has(product.id)) {
+          seen.add(product.id);
+          result.push(product);
+        }
+      }
+      for (const product of products) {
+        if (result.length >= 5) break;
+        if (!seen.has(product.id)) {
+          seen.add(product.id);
+          result.push(product);
+        }
+      }
+      return result.slice(0, 5);
+    } catch {
+      return products.slice(0, 5);
+    }
+  }, [userId, db.initialized, products, db]);
 
-  // Filtered products for search
   const filteredProducts = useMemo(() => {
-    if (!searchQuery) return products;
-    return products.filter(p =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return products;
+    return products.filter((p) => p.name.toLowerCase().includes(query));
   }, [products, searchQuery]);
 
-  // Calculate totals
   const totals = useMemo(() => {
     const totalAmount = items.reduce((sum, item) => sum + item.total_price, 0);
     const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
     return { totalAmount, totalItems };
   }, [items]);
 
-  // Load existing sale if editing
   useEffect(() => {
-    if (isEditing && params.id && db.initialized) {
-      const sale = db.getSale(params.id as string);
-      const saleItems = db.getSaleItems(params.id as string);
-      if (sale) {
-        setDate(sale.date);
-        setPaymentMethod(sale.payment_method);
-        setItems(saleItems.map(item => ({
-          id: item.id,
-          product_id: item.product_id,
-          product_name: item.product_name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total_price: item.total_price,
-          cost_price: item.cost_price,
-        })));
-      }
-    }
-  }, [isEditing, params.id, db.initialized]);
+    if (!isEditing || !saleId || !db.initialized) return;
+    const sale = db.getSale(saleId);
+    const saleItems = db.getSaleItems(saleId);
 
-  const validateForm = (): boolean => {
-    if (items.length === 0) {
-      setError('Debes agregar al menos un producto');
-      return false;
+    if (!sale) {
+      setNotFound(true);
+      setLoadingSale(false);
+      return;
     }
+
+    setDate(sale.date);
+    setPaymentMethod(sale.payment_method);
+    setItems(
+      saleItems.map((item) => ({
+        key: item.id,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_price: item.total_price,
+        cost_price: item.cost_price,
+      }))
+    );
+    setOriginalQuantities(
+      saleItems.reduce<Record<string, number>>((acc, item) => {
+        acc[item.product_id] = (acc[item.product_id] ?? 0) + item.quantity;
+        return acc;
+      }, {})
+    );
+    setLoadingSale(false);
+  }, [isEditing, saleId, db.initialized, db]);
+
+  /** Stock disponible considerando lo que esta venta ya había descontado. */
+  const availableStock = useCallback(
+    (productId: string, currentStock: number) =>
+      currentStock + (isEditing ? originalQuantities[productId] ?? 0 : 0),
+    [isEditing, originalQuantities]
+  );
+
+  const selectProduct = (productId: string) => {
+    setSelectedProductId(productId);
+    setQuantity('1');
+    setShowProductSearch(false);
+    setSearchQuery('');
     setError('');
-    return true;
   };
 
   const handleAddItem = () => {
@@ -111,34 +174,51 @@ export default function NewSaleScreen() {
       setError('Selecciona un producto');
       return;
     }
-    const qty = parseInt(quantity);
-    if (!qty || qty <= 0) {
-      setError('La cantidad debe ser mayor a 0');
+
+    const clean = digitsOnly(quantity);
+    const qty = Number(clean);
+    if (!clean || !Number.isFinite(qty) || qty <= 0) {
+      setError('La cantidad debe ser un número mayor a 0');
       return;
     }
 
-    const product = products.find(p => p.id === selectedProductId);
-    if (!product) return;
-
-    if (product.stock < qty) {
-      setError(`Stock insuficiente. Disponible: ${product.stock} ${product.unit}`);
+    const product = products.find((p) => p.id === selectedProductId);
+    if (!product) {
+      setError('El producto ya no existe');
       return;
     }
 
-    const existingIndex = items.findIndex(item => item.product_id === selectedProductId);
-    if (existingIndex >= 0) {
-      const newItems = [...items];
-      newItems[existingIndex] = {
-        ...newItems[existingIndex],
-        quantity: newItems[existingIndex].quantity + qty,
-        total_price: (newItems[existingIndex].quantity + qty) * product.sale_price,
-      };
-      setItems(newItems);
-    } else {
-      setItems([
-        ...items,
+    const alreadyAdded = items
+      .filter((item) => item.product_id === selectedProductId)
+      .reduce((sum, item) => sum + item.quantity, 0);
+    const maxStock = availableStock(product.id, product.stock);
+
+    if (alreadyAdded + qty > maxStock) {
+      setError(
+        `Stock insuficiente. Disponible: ${maxStock} ${product.unit}${
+          alreadyAdded > 0 ? ` (ya agregaste ${alreadyAdded})` : ''
+        }`
+      );
+      return;
+    }
+
+    setItems((current) => {
+      const existingIndex = current.findIndex((item) => item.product_id === selectedProductId);
+      if (existingIndex >= 0) {
+        const next = [...current];
+        const existing = next[existingIndex];
+        const newQuantity = existing.quantity + qty;
+        next[existingIndex] = {
+          ...existing,
+          quantity: newQuantity,
+          total_price: newQuantity * existing.unit_price,
+        };
+        return next;
+      }
+      return [
+        ...current,
         {
-          id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          key: makeKey(),
           product_id: product.id,
           product_name: product.name,
           quantity: qty,
@@ -146,94 +226,136 @@ export default function NewSaleScreen() {
           total_price: product.sale_price * qty,
           cost_price: product.cost_price,
         },
-      ]);
-    }
+      ];
+    });
 
     setSelectedProductId(null);
     setQuantity('1');
-    setShowProductSearch(false);
     setError('');
   };
 
-  const handleRemoveItem = (itemId: string) => {
-    setItems(items.filter(item => item.id !== itemId));
+  const handleRemoveItem = (key: string) => {
+    setItems((current) => current.filter((item) => item.key !== key));
+    setError('');
   };
 
-  const handleUpdateQuantity = (itemId: string, newQty: number) => {
-    if (newQty <= 0) {
-      handleRemoveItem(itemId);
+  const handleUpdateQuantity = (key: string, nextQuantity: number) => {
+    const item = items.find((i) => i.key === key);
+    if (!item) return;
+
+    if (nextQuantity <= 0) {
+      handleRemoveItem(key);
       return;
     }
 
-    const item = items.find(i => i.id === itemId);
-    const product = products.find(p => p.id === item?.product_id);
-    if (!item || !product) return;
+    const product = products.find((p) => p.id === item.product_id);
+    if (!product) return;
 
-    // Check stock (considering other items of same product)
-    const otherItemsQty = items
-      .filter(i => i.product_id === item.product_id && i.id !== itemId)
+    const others = items
+      .filter((i) => i.product_id === item.product_id && i.key !== key)
       .reduce((sum, i) => sum + i.quantity, 0);
+    const maxStock = availableStock(product.id, product.stock);
 
-    if (product.stock < newQty + otherItemsQty) {
-      setError(`Stock insuficiente. Disponible: ${product.stock} ${product.unit}`);
+    if (others + nextQuantity > maxStock) {
+      setError(`Stock insuficiente. Disponible: ${maxStock} ${product.unit}`);
       return;
     }
 
-    setItems(items.map(i =>
-      i.id === itemId
-        ? { ...i, quantity: newQty, total_price: i.unit_price * newQty }
-        : i
-    ));
+    setItems((current) =>
+      current.map((i) =>
+        i.key === key
+          ? { ...i, quantity: nextQuantity, total_price: i.unit_price * nextQuantity }
+          : i
+      )
+    );
     setError('');
   };
 
-  const handleSave = async () => {
-    if (!validateForm()) return;
-    if (!userId) return;
+  const handleSave = () => {
+    if (items.length === 0) {
+      setError('Debes agregar al menos un producto');
+      return;
+    }
+    if (!userId) {
+      setError('Tu sesión no está lista. Intenta de nuevo.');
+      return;
+    }
 
     setLoading(true);
-    const saleId = isEditing ? (params.id as string) : `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date().toISOString();
+    setError('');
 
     try {
-      if (isEditing) {
-        // Delete old sale and restore stock
-        db.deleteSale(saleId);
+      if (isEditing && saleId) {
+        db.updateSaleWithItems(
+          saleId,
+          {
+            date,
+            total_amount: totals.totalAmount,
+            total_items: totals.totalItems,
+            payment_method: paymentMethod,
+            status: 'cobrada',
+          },
+          items.map((item) => ({
+            product_id: item.product_id,
+            product_name: item.product_name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price,
+            cost_price: item.cost_price,
+          }))
+        );
+      } else {
+        db.createSale(
+          {
+            id: makeKey(),
+            user_id: userId,
+            date,
+            total_amount: totals.totalAmount,
+            total_items: totals.totalItems,
+            payment_method: paymentMethod,
+            status: 'cobrada',
+          },
+          items.map((item) => ({
+            product_id: item.product_id,
+            product_name: item.product_name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price,
+            cost_price: item.cost_price,
+          }))
+        );
       }
-
-      // Create new sale
-      db.createSale(
-        {
-          id: saleId,
-          user_id: userId,
-          date,
-          total_amount: totals.totalAmount,
-          total_items: totals.totalItems,
-          payment_method: paymentMethod,
-          status: 'cobrada',
-        },
-        items.map(item => ({
-          product_id: item.product_id,
-          product_name: item.product_name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total_price: item.total_price,
-          cost_price: item.cost_price,
-        }))
-      );
 
       router.replace('/movements');
     } catch (err) {
-      console.error('Error saving sale:', err);
-      Alert.alert('Error', 'No se pudo guardar la venta');
+      console.error('Error al guardar la venta:', err);
+      Alert.alert(
+        'No se pudo guardar',
+        'Revisa el stock de los productos e intenta de nuevo.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDateChange = (newDate: Date) => {
-    setDate(formatDateForDB(newDate));
-  };
+  if (loadingSale) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator color="#6366F1" size="large" />
+      </View>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.notFoundTitle}>Venta no encontrada</Text>
+        <TouchableOpacity style={styles.backHomeButton} onPress={() => router.replace('/movements')}>
+          <Text style={styles.backHomeText}>Volver a movimientos</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -246,42 +368,39 @@ export default function NewSaleScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Text style={styles.backButtonText}>‹</Text>
           </TouchableOpacity>
-          <Text style={styles.screenTitle}>{isEditing ? 'Editar venta' : 'Registra lo que vendiste'}</Text>
+          <Text style={styles.screenTitle}>
+            {isEditing ? 'Editar venta' : 'Registra lo que vendiste'}
+          </Text>
           <View style={{ width: 44 }} />
         </View>
 
-        {/* Date Selector */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Fecha</Text>
-          <TouchableOpacity style={styles.dateButton} onPress={() => {}}>
-            <Text style={styles.dateButtonText}>{date}</Text>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+            <Text style={styles.dateButtonText}>{formatDateKeyLong(date)}</Text>
             <Text style={styles.dateButtonIcon}>📅</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Product Search */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Producto</Text>
 
-          {/* Top Products Quick Access */}
           {topProducts.length > 0 && (
             <View style={styles.topProductsContainer}>
               <Text style={styles.topProductsLabel}>Más vendidos</Text>
-              <View style={styles.topProductsScroll}>
-                {topProducts.map(product => (
+              <View style={styles.topProductsList}>
+                {topProducts.map((product) => (
                   <TouchableOpacity
                     key={product.id}
                     style={[
                       styles.topProductButton,
                       selectedProductId === product.id && styles.topProductButtonSelected,
                     ]}
-                    onPress={() => {
-                      setSelectedProductId(product.id);
-                      setQuantity('1');
-                      setShowProductSearch(false);
-                    }}
+                    onPress={() => selectProduct(product.id)}
                   >
-                    <Text style={styles.topProductButtonName}>{product.name}</Text>
+                    <Text style={styles.topProductButtonName} numberOfLines={1}>
+                      {product.name}
+                    </Text>
                     <Text style={styles.topProductButtonPrice}>
                       {currencyFormatter.format(product.sale_price)} / {product.unit}
                     </Text>
@@ -294,75 +413,77 @@ export default function NewSaleScreen() {
             </View>
           )}
 
-          {/* Search Input */}
           <TextInput
             style={styles.searchInput}
             placeholder="Buscar producto..."
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={(value) => {
+              setSearchQuery(value);
+              setShowProductSearch(true);
+            }}
             onFocus={() => setShowProductSearch(true)}
             placeholderTextColor="#A1A1AA"
+            autoCorrect={false}
           />
 
-          {/* Search Results */}
           {showProductSearch && filteredProducts.length > 0 && (
             <View style={styles.searchResults}>
-              {filteredProducts.map(product => (
+              {filteredProducts.map((product) => (
                 <TouchableOpacity
                   key={product.id}
                   style={[
                     styles.searchResultItem,
                     selectedProductId === product.id && styles.searchResultItemSelected,
                   ]}
-                  onPress={() => {
-                    setSelectedProductId(product.id);
-                    setQuantity('1');
-                    setShowProductSearch(false);
-                  }}
+                  onPress={() => selectProduct(product.id)}
                 >
-                  <Text style={styles.searchResultName}>{product.name}</Text>
-                  <View style={styles.searchResultMeta}>
-                    <Text style={styles.searchResultPrice}>
-                      {currencyFormatter.format(product.sale_price)} / {product.unit}
-                    </Text>
-                    <Text style={[
-                      styles.searchResultStock,
-                      product.stock <= product.min_stock && styles.searchResultStockLow,
-                    ]}>
-                      Stock: {product.stock} {product.unit}
-                    </Text>
+                  <View style={styles.searchResultInfo}>
+                    <Text style={styles.searchResultName}>{product.name}</Text>
+                    <View style={styles.searchResultMeta}>
+                      <Text style={styles.searchResultPrice}>
+                        {currencyFormatter.format(product.sale_price)} / {product.unit}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.searchResultStock,
+                          product.stock <= product.min_stock && styles.searchResultStockLow,
+                        ]}
+                      >
+                        Stock: {product.stock} {product.unit}
+                      </Text>
+                    </View>
                   </View>
+                  <Text style={styles.searchResultAdd}>+</Text>
                 </TouchableOpacity>
               ))}
             </View>
           )}
 
-          {showProductSearch && filteredProducts.length === 0 && searchQuery && (
+          {showProductSearch && searchQuery.trim().length > 0 && filteredProducts.length === 0 && (
             <Text style={styles.noResults}>No se encontraron productos</Text>
           )}
 
-          {/* Selected Product Quantity */}
           {selectedProductId && (
             <View style={styles.quantitySelector}>
               <Text style={styles.quantityLabel}>Cantidad</Text>
               <View style={styles.quantityInputContainer}>
                 <TouchableOpacity
                   style={styles.quantityButton}
-                  onPress={() => setQuantity(String(Math.max(1, parseInt(quantity) - 1)))}
+                  onPress={() => setQuantity(String(Math.max(1, Number(digitsOnly(quantity) || 1) - 1)))}
                 >
                   <Text style={styles.quantityButtonText}>−</Text>
                 </TouchableOpacity>
                 <TextInput
                   style={styles.quantityInput}
                   value={quantity}
-                  onChangeText={setQuantity}
-                  keyboardType="numeric"
+                  onChangeText={(value) => setQuantity(digitsOnly(value).slice(0, 5))}
+                  keyboardType="number-pad"
                   textAlign="center"
-                  maxLength={4}
+                  maxLength={5}
                 />
                 <TouchableOpacity
                   style={styles.quantityButton}
-                  onPress={() => setQuantity(String(parseInt(quantity) + 1))}
+                  onPress={() => setQuantity(String(Number(digitsOnly(quantity) || 0) + 1))}
                 >
                   <Text style={styles.quantityButtonText}>+</Text>
                 </TouchableOpacity>
@@ -373,16 +494,15 @@ export default function NewSaleScreen() {
             </View>
           )}
 
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
         </View>
 
-        {/* Items List */}
         {items.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Productos en la venta ({items.length})</Text>
             <View style={styles.itemsList}>
-              {items.map(item => (
-                <View key={item.id} style={styles.itemRow}>
+              {items.map((item) => (
+                <View key={item.key} style={styles.itemRow}>
                   <View style={styles.itemInfo}>
                     <Text style={styles.itemName}>{item.product_name}</Text>
                     <Text style={styles.itemPrice}>
@@ -393,9 +513,29 @@ export default function NewSaleScreen() {
                     <Text style={styles.itemTotal}>
                       {currencyFormatter.format(item.total_price)}
                     </Text>
-                    <TouchableOpacity style={styles.removeButton} onPress={() => handleRemoveItem(item.id)}>
-                      <Text style={styles.removeButtonText}>✕</Text>
-                    </TouchableOpacity>
+                    <View style={styles.itemStepper}>
+                      <TouchableOpacity
+                        style={styles.stepperButton}
+                        onPress={() => handleUpdateQuantity(item.key, item.quantity - 1)}
+                        accessibilityLabel={`Quitar uno de ${item.product_name}`}
+                      >
+                        <Text style={styles.stepperButtonText}>−</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.stepperButton}
+                        onPress={() => handleUpdateQuantity(item.key, item.quantity + 1)}
+                        accessibilityLabel={`Agregar uno de ${item.product_name}`}
+                      >
+                        <Text style={styles.stepperButtonText}>+</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.removeButton}
+                        onPress={() => handleRemoveItem(item.key)}
+                        accessibilityLabel={`Quitar ${item.product_name}`}
+                      >
+                        <Text style={styles.removeButtonText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               ))}
@@ -403,24 +543,25 @@ export default function NewSaleScreen() {
           </View>
         )}
 
-        {/* Payment Method */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Método de pago</Text>
           <View style={styles.paymentMethods}>
-            {PAYMENT_METHODS.map(method => (
+            {PAYMENT_METHODS.map((method) => (
               <TouchableOpacity
                 key={method.value}
                 style={[
                   styles.paymentMethodButton,
                   paymentMethod === method.value && styles.paymentMethodButtonSelected,
                 ]}
-                onPress={() => setPaymentMethod(method.value as any)}
+                onPress={() => setPaymentMethod(method.value)}
               >
                 <Text style={styles.paymentMethodIcon}>{method.icon}</Text>
-                <Text style={[
-                  styles.paymentMethodLabel,
-                  paymentMethod === method.value && styles.paymentMethodLabelSelected,
-                ]}>
+                <Text
+                  style={[
+                    styles.paymentMethodLabel,
+                    paymentMethod === method.value && styles.paymentMethodLabelSelected,
+                  ]}
+                >
                   {method.label}
                 </Text>
               </TouchableOpacity>
@@ -428,36 +569,37 @@ export default function NewSaleScreen() {
           </View>
         </View>
 
-        {/* Total */}
         <View style={styles.totalContainer}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total</Text>
             <Text style={styles.totalAmount}>{currencyFormatter.format(totals.totalAmount)}</Text>
           </View>
-          <View style={styles.totalRow}>
+          <View style={styles.totalRowLast}>
             <Text style={styles.totalLabel}>Artículos</Text>
             <Text style={styles.totalItems}>{totals.totalItems}</Text>
           </View>
         </View>
 
-        {/* Save Button */}
         <TouchableOpacity
-          style={[
-            styles.saveButton,
-            items.length === 0 && styles.saveButtonDisabled,
-          ]}
+          style={[styles.saveButton, (items.length === 0 || loading) && styles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={items.length === 0 || loading}
         >
-          {loading ? (
-            <Text style={styles.saveButtonText}>Guardando...</Text>
-          ) : (
-            <Text style={styles.saveButtonText}>
-              {isEditing ? 'Actualizar venta' : 'Guardar venta'}
-            </Text>
-          )}
+          <Text style={styles.saveButtonText}>
+            {loading ? 'Guardando...' : isEditing ? 'Actualizar venta' : 'Guardar venta'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <DatePickerModal
+        visible={showDatePicker}
+        value={date}
+        title="Fecha de la venta"
+        minimumDate={minimumDate}
+        maximumDate={maximumDate}
+        onClose={() => setShowDatePicker(false)}
+        onSelect={setDate}
+      />
     </View>
   );
 }
@@ -473,7 +615,31 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 100,
+    paddingBottom: 60,
+  },
+  centered: {
+    flex: 1,
+    backgroundColor: '#FAFAFA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  notFoundTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#27272A',
+  },
+  backHomeButton: {
+    backgroundColor: '#6366F1',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+  },
+  backHomeText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -527,7 +693,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   dateButtonText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '500',
     color: '#18181B',
   },
@@ -543,7 +709,7 @@ const styles = StyleSheet.create({
     color: '#27272A',
     marginBottom: 8,
   },
-  topProductsScroll: {
+  topProductsList: {
     gap: 8,
   },
   topProductButton: {
@@ -552,7 +718,6 @@ const styles = StyleSheet.create({
     borderColor: '#E4E4E7',
     borderRadius: 12,
     padding: 12,
-    minWidth: 140,
   },
   topProductButtonSelected: {
     borderColor: '#6366F1',
@@ -587,7 +752,7 @@ const styles = StyleSheet.create({
   },
   searchResults: {
     gap: 8,
-    maxHeight: 200,
+    marginBottom: 12,
   },
   searchResultItem: {
     flexDirection: 'row',
@@ -598,10 +763,14 @@ const styles = StyleSheet.create({
     borderColor: '#E4E4E7',
     borderRadius: 12,
     padding: 12,
+    gap: 8,
   },
   searchResultItemSelected: {
     borderColor: '#6366F1',
     backgroundColor: '#F0F0FF',
+  },
+  searchResultInfo: {
+    flex: 1,
   },
   searchResultName: {
     fontSize: 15,
@@ -613,6 +782,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flexWrap: 'wrap',
   },
   searchResultPrice: {
     fontSize: 13,
@@ -626,6 +796,12 @@ const styles = StyleSheet.create({
   searchResultStockLow: {
     color: '#EF4444',
     fontWeight: '600',
+  },
+  searchResultAdd: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#6366F1',
+    paddingHorizontal: 6,
   },
   noResults: {
     fontSize: 14,
@@ -702,6 +878,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: '#E4E4E7',
+    gap: 8,
   },
   itemInfo: {
     flex: 1,
@@ -725,16 +902,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#10B981',
   },
+  itemStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  stepperButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F4F4F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#27272A',
+  },
   removeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#FEF2F2',
     alignItems: 'center',
     justifyContent: 'center',
   },
   removeButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#EF4444',
   },
@@ -781,6 +976,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  totalRowLast: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   totalLabel: {
     fontSize: 16,
