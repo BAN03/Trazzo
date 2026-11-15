@@ -1,13 +1,15 @@
 'use client';
 
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Keyboard } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import React from 'react';
 
 export default function TourBusinessScreen() {
-  const { updateUser } = useAuthStore();
-  const [businessName, setBusinessName] = React.useState('');
+  const { updateUser, user } = useAuthStore();
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const isEditing = edit === '1';
+  const [businessName, setBusinessName] = React.useState(user?.businessName ?? '');
   const [error, setError] = React.useState('');
 
   const validateBusinessName = (value: string): boolean => {
@@ -29,14 +31,18 @@ export default function TourBusinessScreen() {
     Keyboard.dismiss();
     if (validateBusinessName(businessName)) {
       updateUser({ businessName: businessName.trim() });
-      router.push('/tour/category');
+      if (isEditing) {
+        router.back();
+      } else {
+        router.push('/tour/category');
+      }
     }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.stepText}>Paso 2 de 3</Text>
+        <Text style={styles.stepText}>{isEditing ? 'Editar negocio' : 'Paso 2 de 3'}</Text>
         <Text style={styles.title}>¿Cómo se llama tu negocio?</Text>
         <Text style={styles.subtitle}>
           El nombre de tu tienda, puesto o emprendimiento
@@ -66,7 +72,7 @@ export default function TourBusinessScreen() {
         onPress={handleContinue}
         disabled={businessName.trim().length < 2 || !!error}
       >
-        <Text style={styles.continueButtonText}>Confirmar</Text>
+        <Text style={styles.continueButtonText}>{isEditing ? 'Guardar' : 'Confirmar'}</Text>
       </TouchableOpacity>
     </View>
   );

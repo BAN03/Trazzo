@@ -29,15 +29,15 @@ export default function TourConfirmationScreen() {
   };
 
   const handleEditName = () => {
-    router.push('/tour/name');
+    router.push('/tour/name?edit=1');
   };
 
   const handleEditBusiness = () => {
-    router.push('/tour/business');
+    router.push('/tour/business?edit=1');
   };
 
   const handleEditCategory = () => {
-    router.push('/tour/category');
+    router.push('/tour/category?edit=1');
   };
 
   const handleStart = () => {

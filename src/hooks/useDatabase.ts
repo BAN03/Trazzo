@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuthStore } from './useAuthStore';
 import db, {
   initDatabase,
   generateId,
   getCurrentDateTime,
   formatDateForDB,
-  formatDateTimeForDB,
+  upsertUser as upsertUserRow,
+  mergeLocalUserInto,
+  UserUpsertInput,
   User,
   Product,
   Sale,
@@ -12,33 +15,68 @@ import db, {
   Expense,
   Task,
 } from '../utils/database';
+import { todayKey } from '../utils/date';
+
+const authUserToRow = (user: {
+  id: string;
+  name: string;
+  email: string;
+  photo?: string;
+  businessName?: string;
+  businessType?: string;
+  onboardingCompleted: boolean;
+}): UserUpsertInput => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  photo: user.photo ?? null,
+  business_name: user.businessName ?? null,
+  business_type: user.businessType ?? null,
+  onboarding_completed: user.onboardingCompleted,
+});
 
 export function useDatabase() {
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     initDatabase();
+
+    // Si el usuario ya estaba guardado en AsyncStorage, nos aseguramos de
+    // que exista en SQLite antes de que las pantallas consulten datos.
+    const authUser = useAuthStore.getState().user;
+    if (authUser) {
+      upsertUserRow(authUserToRow(authUser));
+    }
+
     setInitialized(true);
+  }, []);
+
+  const ensureUser = useCallback((user: UserUpsertInput) => {
+    initDatabase();
+    upsertUserRow(user);
+  }, []);
+
+  const ensureAuthUser = useCallback((user: Parameters<typeof authUserToRow>[0]) => {
+    initDatabase();
+    upsertUserRow(authUserToRow(user));
+  }, []);
+
+  const migrateLocalData = useCallback((targetUserId: string) => {
+    initDatabase();
+    mergeLocalUserInto(targetUserId);
   }, []);
 
   // User operations
   const createUser = useCallback((user: Omit<User, 'created_at' | 'updated_at'>) => {
-    const now = getCurrentDateTime();
-    db.runSync(
-      `INSERT INTO users (id, name, email, photo, business_name, business_type, onboarding_completed, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        user.id,
-        user.name,
-        user.email,
-        user.photo || null,
-        user.business_name || null,
-        user.business_type || null,
-        user.onboarding_completed ? 1 : 0,
-        now,
-        now,
-      ]
-    );
+    upsertUserRow({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      photo: user.photo,
+      business_name: user.business_name,
+      business_type: user.business_type,
+      onboarding_completed: user.onboarding_completed,
+    });
   }, []);
 
   const getUser = useCallback((id: string): User | null => {
@@ -52,6 +90,22 @@ export function useDatabase() {
   }, []);
 
   const updateUser = useCallback((id: string, data: Partial<User>) => {
+    const existing = db.getFirstSync<User>('SELECT * FROM users WHERE id = ?', [id]);
+
+    if (!existing) {
+      // Antes esto no hacía nada y dejaba la app sin usuario en SQLite.
+      upsertUserRow({
+        id,
+        name: data.name || 'Usuario',
+        email: data.email || `${id}@trazzo.app`,
+        photo: data.photo,
+        business_name: data.business_name,
+        business_type: data.business_type,
+        onboarding_completed: data.onboarding_completed ?? 0,
+      });
+      return;
+    }
+
     const fields = Object.keys(data).filter(k => k !== 'id' && k !== 'created_at');
     if (fields.length === 0) return;
 
@@ -150,8 +204,8 @@ export function useDatabase() {
     const futureDateStr = formatDateForDB(futureDate);
 
     return db.getAllSync<Product>(
-      `SELECT * FROM products WHERE user_id = ? AND expires = 1 AND expiry_date <= ? AND expiry_date >= date('now')`,
-      [userId, futureDateStr]
+      `SELECT * FROM products WHERE user_id = ? AND expires = 1 AND expiry_date <= ? AND expiry_date >= ?`,
+      [userId, futureDateStr, todayKey()]
     );
   }, []);
 
@@ -271,6 +325,74 @@ export function useDatabase() {
       }
       db.runSync('DELETE FROM sale_items WHERE sale_id = ?', [id]);
       db.runSync('DELETE FROM sales WHERE id = ?', [id]);
+      db.execSync('COMMIT');
+    } catch (error) {
+      db.execSync('ROLLBACK');
+      throw error;
+    }
+  }, []);
+
+  /**
+   * Actualiza una venta y sus artículos en una sola transacción:
+   * devuelve el stock anterior y descuenta el nuevo. Evita el flujo
+   * destructivo de borrar y volver a crear.
+   */
+  const updateSaleWithItems = useCallback((
+    id: string,
+    data: Partial<Pick<Sale, 'date' | 'total_amount' | 'total_items' | 'payment_method' | 'status' | 'note'>>,
+    items: Omit<SaleItem, 'id' | 'sale_id'>[]
+  ) => {
+    const now = getCurrentDateTime();
+    const oldItems = db.getAllSync<SaleItem>('SELECT * FROM sale_items WHERE sale_id = ?', [id]);
+
+    db.execSync('BEGIN TRANSACTION');
+    try {
+      for (const item of oldItems) {
+        db.runSync(
+          `UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ?`,
+          [item.quantity, now, item.product_id]
+        );
+      }
+
+      db.runSync('DELETE FROM sale_items WHERE sale_id = ?', [id]);
+
+      db.runSync(
+        `UPDATE sales SET date = ?, total_amount = ?, total_items = ?, payment_method = ?, status = ?, note = ?, updated_at = ?
+         WHERE id = ?`,
+        [
+          data.date ?? '',
+          data.total_amount ?? 0,
+          data.total_items ?? 0,
+          data.payment_method ?? 'efectivo',
+          data.status ?? 'cobrada',
+          data.note ?? null,
+          now,
+          id,
+        ]
+      );
+
+      for (const item of items) {
+        db.runSync(
+          `INSERT INTO sale_items (id, sale_id, product_id, product_name, quantity, unit_price, total_price, cost_price)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            generateId(),
+            id,
+            item.product_id,
+            item.product_name,
+            item.quantity,
+            item.unit_price,
+            item.total_price,
+            item.cost_price,
+          ]
+        );
+
+        db.runSync(
+          `UPDATE products SET stock = stock - ?, updated_at = ? WHERE id = ?`,
+          [item.quantity, now, item.product_id]
+        );
+      }
+
       db.execSync('COMMIT');
     } catch (error) {
       db.execSync('ROLLBACK');
@@ -464,9 +586,12 @@ export function useDatabase() {
     db.runSync('DELETE FROM tasks WHERE id = ?', [id]);
   }, []);
 
-  return {
+  return useMemo(() => ({
     initialized,
     // Users
+    ensureUser,
+    ensureAuthUser,
+    migrateLocalData,
     createUser,
     getUser,
     getCurrentUser,
@@ -486,6 +611,7 @@ export function useDatabase() {
     getSale,
     getSaleItems,
     updateSale,
+    updateSaleWithItems,
     deleteSale,
     getSalesStats,
     getTopProducts,
@@ -502,5 +628,42 @@ export function useDatabase() {
     getTasks,
     updateTask,
     deleteTask,
-  };
+  }), [
+    initialized,
+    ensureUser,
+    ensureAuthUser,
+    migrateLocalData,
+    createUser,
+    getUser,
+    getCurrentUser,
+    updateUser,
+    createProduct,
+    getProducts,
+    getProduct,
+    updateProduct,
+    deleteProduct,
+    updateProductStock,
+    getLowStockProducts,
+    getExpiringProducts,
+    createSale,
+    getSales,
+    getSale,
+    getSaleItems,
+    updateSale,
+    updateSaleWithItems,
+    deleteSale,
+    getSalesStats,
+    getTopProducts,
+    getWeeklySalesData,
+    createExpense,
+    getExpenses,
+    getExpense,
+    updateExpense,
+    deleteExpense,
+    getExpensesStats,
+    createTask,
+    getTasks,
+    updateTask,
+    deleteTask,
+  ]);
 }

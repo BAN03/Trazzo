@@ -1,20 +1,25 @@
-'use client';
-
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { useAuthStore } from '../hooks/useAuthStore';
 
 export default function PrimerArranque() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const user = useAuthStore((state) => state.user);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
 
-  const handleLogin = () => {
-    router.push('/login');
-  };
+  useEffect(() => {
+    if (!hasHydrated || !user) return;
+    router.replace(user.onboardingCompleted ? '/home' : '/welcome');
+  }, [hasHydrated, user]);
 
-  const handleRegister = () => {
-    router.push('/register');
-  };
+  if (!hasHydrated) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.appName}>Trazzo</Text>
+        <ActivityIndicator color="#6366F1" size="large" style={styles.loader} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -24,14 +29,18 @@ export default function PrimerArranque() {
       </View>
 
       <View style={styles.buttonsContainer}>
-        <TouchableOpacity style={styles.primaryButton} onPress={handleLogin}>
-          <Text style={styles.primaryButtonText}>Iniciar Sesión</Text>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => router.push('/login')}>
+          <Text style={styles.primaryButtonText}>Iniciar sesión</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleRegister}>
+        <TouchableOpacity style={styles.secondaryButton} onPress={() => router.push('/register')}>
           <Text style={styles.secondaryButtonText}>Registrarse</Text>
         </TouchableOpacity>
       </View>
+
+      <Text style={styles.helperText}>
+        Moneda MXN · Datos guardados en este dispositivo
+      </Text>
     </View>
   );
 }
@@ -58,6 +67,9 @@ const styles = StyleSheet.create({
     color: '#27272A',
     marginTop: 8,
     fontWeight: '400',
+  },
+  loader: {
+    marginTop: 24,
   },
   buttonsContainer: {
     gap: 16,
@@ -91,5 +103,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#27272A',
+  },
+  helperText: {
+    marginTop: 24,
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#A1A1AA',
   },
 });

@@ -1,12 +1,20 @@
 'use client';
 
+import { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { useAuthStore } from '../hooks/useAuthStore';
 
 export default function WelcomeScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const user = useAuthStore((state) => state.user);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  const updateUser = useAuthStore((state) => state.updateUser);
+
+  useEffect(() => {
+    if (hasHydrated && user?.onboardingCompleted) {
+      router.replace('/home');
+    }
+  }, [hasHydrated, user?.onboardingCompleted]);
 
   const features = [
     {
@@ -45,6 +53,11 @@ export default function WelcomeScreen() {
     router.push('/tour/name');
   };
 
+  const handleSkip = () => {
+    updateUser({ onboardingCompleted: true });
+    router.replace('/home');
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
@@ -69,7 +82,7 @@ export default function WelcomeScreen() {
         <Text style={styles.startButtonText}>Empezar Tour</Text>
       </TouchableOpacity>
 
-      <Text style={styles.skipText} onPress={() => router.replace('/home')}>
+      <Text style={styles.skipText} onPress={handleSkip}>
         Saltar configuración inicial
       </Text>
     </ScrollView>

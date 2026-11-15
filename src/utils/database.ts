@@ -1,7 +1,11 @@
-import * as SQLite from 'expo-sqlite';
 import { openDatabaseSync } from 'expo-sqlite';
+import { toDateKey } from './date';
 
 const db = openDatabaseSync('trazzo.db');
+
+/** Usuario local que se usa cuando no hay una cuenta de Google configurada. */
+export const LOCAL_USER_ID = 'local-user';
+export const LOCAL_USER_EMAIL = 'local@trazzo.app';
 
 export interface User {
   id: string;
@@ -79,7 +83,11 @@ export interface Task {
   updated_at: string;
 }
 
+let schemaReady = false;
+
 export const initDatabase = () => {
+  if (schemaReady) return;
+
   db.execSync(`
     PRAGMA foreign_keys = ON;
 
@@ -173,22 +181,94 @@ export const initDatabase = () => {
     CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
     CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
   `);
+
+  schemaReady = true;
 };
 
 export const generateId = () => {
-  return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 };
 
 export const getCurrentDateTime = () => {
   return new Date().toISOString();
 };
 
-export const formatDateForDB = (date: Date) => {
-  return date.toISOString().split('T')[0];
-};
+/**
+ * Formato local `YYYY-MM-DD` para columnas de fecha.
+ * No usar `toISOString()`: en México cambia el día por la zona UTC.
+ */
+export const formatDateForDB = (date: Date) => toDateKey(date);
 
 export const formatDateTimeForDB = (date: Date) => {
   return date.toISOString();
+};
+
+export interface UserUpsertInput {
+  id: string;
+  name: string;
+  email: string;
+  photo?: string | null;
+  business_name?: string | null;
+  business_type?: string | null;
+  onboarding_completed?: boolean | number;
+}
+
+/**
+ * Crea o actualiza al usuario sin perder la información del negocio.
+ * Se usa al iniciar sesión y al terminar el tour.
+ */
+export const upsertUser = (user: UserUpsertInput): void => {
+  const now = getCurrentDateTime();
+  db.runSync(
+    `INSERT INTO users (id, name, email, photo, business_name, business_type, onboarding_completed, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       name = excluded.name,
+       email = excluded.email,
+       photo = COALESCE(excluded.photo, users.photo),
+       business_name = COALESCE(excluded.business_name, users.business_name),
+       business_type = COALESCE(excluded.business_type, users.business_type),
+       onboarding_completed = MAX(users.onboarding_completed, excluded.onboarding_completed),
+       updated_at = excluded.updated_at`,
+    [
+      user.id,
+      user.name.trim() || 'Usuario',
+      user.email.trim() || `${user.id}@trazzo.app`,
+      user.photo || null,
+      user.business_name || null,
+      user.business_type || null,
+      user.onboarding_completed ? 1 : 0,
+      now,
+      now,
+    ]
+  );
+};
+
+/**
+ * Mueve los datos del usuario local al iniciar sesión con Google para no
+ * perder lo que se capturó antes de tener cuenta.
+ */
+export const mergeLocalUserInto = (targetUserId: string): void => {
+  if (!targetUserId || targetUserId === LOCAL_USER_ID) return;
+
+  const localUser = db.getFirstSync<{ id: string }>(
+    'SELECT id FROM users WHERE id = ?',
+    [LOCAL_USER_ID]
+  );
+  if (!localUser) return;
+
+  db.execSync('BEGIN TRANSACTION');
+  try {
+    db.runSync('UPDATE products SET user_id = ? WHERE user_id = ?', [targetUserId, LOCAL_USER_ID]);
+    db.runSync('UPDATE sales SET user_id = ? WHERE user_id = ?', [targetUserId, LOCAL_USER_ID]);
+    db.runSync('UPDATE expenses SET user_id = ? WHERE user_id = ?', [targetUserId, LOCAL_USER_ID]);
+    db.runSync('UPDATE tasks SET user_id = ? WHERE user_id = ?', [targetUserId, LOCAL_USER_ID]);
+    db.runSync('DELETE FROM users WHERE id = ?', [LOCAL_USER_ID]);
+    db.execSync('COMMIT');
+  } catch (error) {
+    db.execSync('ROLLBACK');
+    throw error;
+  }
 };
 
 export default db;

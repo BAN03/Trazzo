@@ -1,13 +1,15 @@
 'use client';
 
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Keyboard } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import React from 'react';
 
 export default function TourNameScreen() {
-  const { updateUser } = useAuthStore();
-  const [name, setName] = React.useState('');
+  const { updateUser, user } = useAuthStore();
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const isEditing = edit === '1';
+  const [name, setName] = React.useState(user?.name && user.name !== 'Usuario' ? user.name : '');
   const [error, setError] = React.useState('');
 
   const validateName = (value: string): boolean => {
@@ -29,14 +31,18 @@ export default function TourNameScreen() {
     Keyboard.dismiss();
     if (validateName(name)) {
       updateUser({ name: name.trim() });
-      router.push('/tour/business');
+      if (isEditing) {
+        router.back();
+      } else {
+        router.push('/tour/business');
+      }
     }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.stepText}>Paso 1 de 3</Text>
+        <Text style={styles.stepText}>{isEditing ? 'Editar nombre' : 'Paso 1 de 3'}</Text>
         <Text style={styles.title}>¿Cómo te llamas?</Text>
         <Text style={styles.subtitle}>
           Este nombre aparecerá en la aplicación
@@ -66,7 +72,7 @@ export default function TourNameScreen() {
         onPress={handleContinue}
         disabled={name.trim().length < 2 || !!error}
       >
-        <Text style={styles.continueButtonText}>Confirmar</Text>
+        <Text style={styles.continueButtonText}>{isEditing ? 'Guardar' : 'Confirmar'}</Text>
       </TouchableOpacity>
     </View>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import React from 'react';
 
@@ -14,20 +14,28 @@ const categories = [
 ];
 
 export default function TourCategoryScreen() {
-  const { updateUser } = useAuthStore();
-  const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
+  const { updateUser, user } = useAuthStore();
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const isEditing = edit === '1';
+  const [selectedCategory, setSelectedCategory] = React.useState<string | null>(
+    user?.businessType ?? null
+  );
 
   const handleContinue = () => {
     if (selectedCategory) {
       updateUser({ businessType: selectedCategory });
-      router.push('/tour/confirmation');
+      if (isEditing) {
+        router.back();
+      } else {
+        router.push('/tour/confirmation');
+      }
     }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.stepText}>Paso 3 de 3</Text>
+        <Text style={styles.stepText}>{isEditing ? 'Editar giro' : 'Paso 3 de 3'}</Text>
         <Text style={styles.title}>¿Qué vendes?</Text>
         <Text style={styles.subtitle}>
           Selecciona el giro de tu negocio
@@ -65,7 +73,7 @@ export default function TourCategoryScreen() {
         onPress={handleContinue}
         disabled={!selectedCategory}
       >
-        <Text style={styles.continueButtonText}>Confirmar</Text>
+        <Text style={styles.continueButtonText}>{isEditing ? 'Guardar' : 'Confirmar'}</Text>
       </TouchableOpacity>
     </View>
   );
