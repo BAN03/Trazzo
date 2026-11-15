@@ -268,7 +268,8 @@ function AlertPopup({
           <Text style={styles.alertTitle}>Alertas</Text>
         </View>
 
-        {lowStock.length > 0 && (
+        <ScrollView style={styles.alertScroll} contentContainerStyle={styles.alertScrollContent}>
+          {lowStock.length > 0 && (
           <View style={styles.alertSection}>
             <Text style={styles.alertSectionTitle}>Stock bajo</Text>
             {lowStock.map((item, index) => (
@@ -297,6 +298,7 @@ function AlertPopup({
             ))}
           </View>
         )}
+        </ScrollView>
 
         <TouchableOpacity style={styles.alertCloseButton} onPress={onClose}>
           <Text style={styles.alertCloseButtonText}>Entendido</Text>
@@ -677,12 +679,20 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   alertContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFBEB',
     borderRadius: 20,
     padding: 24,
     width: '100%',
     maxWidth: 340,
     maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  alertScroll: {
+    flexGrow: 0,
+  },
+  alertScrollContent: {
+    paddingBottom: 4,
   },
   alertHeader: {
     flexDirection: 'row',

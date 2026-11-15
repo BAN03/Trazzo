@@ -66,6 +66,7 @@ export default function MovementsScreen() {
   }[]>([]);
   const [incomeStats, setIncomeStats] = useState({ total: 0, count: 0 });
   const [expenseStats, setExpenseStats] = useState({ total: 0, count: 0 });
+  const [saleSummaries, setSaleSummaries] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   const userId = user?.id;
@@ -85,10 +86,18 @@ export default function MovementsScreen() {
         Promise.resolve(db.getExpensesStats(userId, monthBounds.start, monthBounds.end)),
       ]);
 
+      const summaries = db.getSaleItemSummaries(userId, monthBounds.start, monthBounds.end);
+
       setSales(salesData);
       setExpenses(expenseData);
       setIncomeStats({ total: incomeS.total_amount, count: incomeS.total_sales });
       setExpenseStats({ total: expenseS.total_amount, count: expenseS.total_expenses });
+      setSaleSummaries(
+        summaries.reduce<Record<string, string>>((acc, row) => {
+          acc[row.sale_id] = row.summary;
+          return acc;
+        }, {})
+      );
     } catch (error) {
       console.error('Error loading movements data:', error);
     } finally {
@@ -302,6 +311,9 @@ export default function MovementsScreen() {
                         </Text>
                       </View>
                     </View>
+                    <Text style={styles.listItemProducts} numberOfLines={2}>
+                      {saleSummaries[sale.id] || 'Sin detalle de productos'}
+                    </Text>
                   </View>
                   <View style={styles.listItemRight}>
                     <Text style={styles.listItemAmount}>
@@ -310,6 +322,9 @@ export default function MovementsScreen() {
                     <Text style={styles.listItemCount}>
                       {sale.total_items} art.
                     </Text>
+                    <View style={styles.editChip}>
+                      <Text style={styles.editChipText}>✎ Editar</Text>
+                    </View>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -347,6 +362,9 @@ export default function MovementsScreen() {
                     <Text style={styles.listItemAmountExpense}>
                       {currencyFormatter.format(expense.amount)}
                     </Text>
+                    <View style={styles.editChip}>
+                      <Text style={styles.editChipText}>✎ Editar</Text>
+                    </View>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -618,6 +636,23 @@ const styles = StyleSheet.create({
   listItemCount: {
     fontSize: 12,
     color: '#A1A1AA',
+  },
+  listItemProducts: {
+    fontSize: 12,
+    color: '#71717A',
+    marginTop: 4,
+  },
+  editChip: {
+    marginTop: 6,
+    backgroundColor: '#F0F0FF',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  editChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6366F1',
   },
   emptyContainer: {
     alignItems: 'center',

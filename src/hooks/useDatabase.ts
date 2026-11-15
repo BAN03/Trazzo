@@ -296,6 +296,19 @@ export function useDatabase() {
     );
   }, []);
 
+  /** Resumen de productos por venta para pintar la lista de movimientos. */
+  const getSaleItemSummaries = useCallback((userId: string, startDate: string, endDate: string) => {
+    return db.getAllSync<{ sale_id: string; summary: string }>(
+      `SELECT si.sale_id as sale_id,
+              GROUP_CONCAT(si.product_name, ', ') as summary
+         FROM sale_items si
+         JOIN sales s ON si.sale_id = s.id
+        WHERE s.user_id = ? AND s.date >= ? AND s.date <= ?
+        GROUP BY si.sale_id`,
+      [userId, startDate, endDate]
+    );
+  }, []);
+
   const updateSale = useCallback((id: string, data: Partial<Sale>) => {
     const fields = Object.keys(data).filter(k => k !== 'id' && k !== 'created_at' && k !== 'user_id');
     if (fields.length === 0) return;
@@ -610,6 +623,7 @@ export function useDatabase() {
     getSales,
     getSale,
     getSaleItems,
+    getSaleItemSummaries,
     updateSale,
     updateSaleWithItems,
     deleteSale,
@@ -649,6 +663,7 @@ export function useDatabase() {
     getSales,
     getSale,
     getSaleItems,
+    getSaleItemSummaries,
     updateSale,
     updateSaleWithItems,
     deleteSale,
