@@ -50,6 +50,7 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ExpenseCategory>('insumos');
   const [date, setDate] = useState(todayKey());
+  const [originalDate, setOriginalDate] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -59,6 +60,9 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
 
   const minimumDate = useMemo(() => toDateKey(addDays(new Date(), -90)), []);
   const maximumDate = todayKey();
+  /** Al editar un gasto antiguo permitimos conservar su fecha original. */
+  const effectiveMinimumDate =
+    originalDate && originalDate < minimumDate ? originalDate : minimumDate;
 
   useEffect(() => {
     if (!isEditing || !expenseId || !db.initialized) return;
@@ -74,6 +78,7 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
     setDescription(expense.description);
     setCategory(expense.category);
     setDate(expense.date);
+    setOriginalDate(expense.date);
     setNote(expense.note ?? '');
     setLoadingExpense(false);
   }, [isEditing, expenseId, db.initialized, db]);
@@ -106,7 +111,7 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
 
     if (!date) {
       nextErrors.date = 'Selecciona la fecha del gasto';
-    } else if (date < minimumDate || date > maximumDate) {
+    } else if (date < effectiveMinimumDate || date > maximumDate) {
       nextErrors.date = 'La fecha debe estar dentro de los últimos 90 días';
     }
 
@@ -292,7 +297,7 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
         visible={showDatePicker}
         value={date}
         title="Fecha del gasto"
-        minimumDate={minimumDate}
+        minimumDate={effectiveMinimumDate}
         maximumDate={maximumDate}
         onClose={() => setShowDatePicker(false)}
         onSelect={(value) => {

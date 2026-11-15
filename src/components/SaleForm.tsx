@@ -61,6 +61,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
   const userId = user?.id;
 
   const [date, setDate] = useState(todayKey());
+  const [originalDate, setOriginalDate] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState('1');
@@ -76,6 +77,9 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
 
   const minimumDate = useMemo(() => toDateKey(addDays(new Date(), -90)), []);
   const maximumDate = todayKey();
+  /** Al editar una venta antigua permitimos conservar su fecha original. */
+  const effectiveMinimumDate =
+    originalDate && originalDate < minimumDate ? originalDate : minimumDate;
 
   const products = useMemo(() => {
     if (!userId || !db.initialized) return [];
@@ -133,6 +137,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
     }
 
     setDate(sale.date);
+    setOriginalDate(sale.date);
     setPaymentMethod(sale.payment_method);
     setItems(
       saleItems.map((item) => ({
@@ -274,6 +279,10 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
   const handleSave = () => {
     if (items.length === 0) {
       setError('Debes agregar al menos un producto');
+      return;
+    }
+    if (!date || date < effectiveMinimumDate || date > maximumDate) {
+      setError('La fecha debe estar dentro de los últimos 90 días');
       return;
     }
     if (!userId) {
@@ -595,10 +604,13 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
         visible={showDatePicker}
         value={date}
         title="Fecha de la venta"
-        minimumDate={minimumDate}
+        minimumDate={effectiveMinimumDate}
         maximumDate={maximumDate}
         onClose={() => setShowDatePicker(false)}
-        onSelect={setDate}
+        onSelect={(value) => {
+          setDate(value);
+          setError('');
+        }}
       />
     </View>
   );
