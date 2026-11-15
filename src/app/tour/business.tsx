@@ -53,7 +53,10 @@ export default function TourBusinessScreen() {
         <TextInput
           style={styles.input}
           value={businessName}
-          onChangeText={setBusinessName}
+          onChangeText={(value) => {
+            setBusinessName(value);
+            if (error) setError('');
+          }}
           placeholder="Nombre de tu negocio"
           placeholderTextColor="#A1A1AA"
           autoCapitalize="words"

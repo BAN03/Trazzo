@@ -53,7 +53,10 @@ export default function TourNameScreen() {
         <TextInput
           style={styles.input}
           value={name}
-          onChangeText={setName}
+          onChangeText={(value) => {
+            setName(value);
+            if (error) setError('');
+          }}
           placeholder="Tu nombre"
           placeholderTextColor="#A1A1AA"
           autoCapitalize="words"
