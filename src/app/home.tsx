@@ -1,12 +1,20 @@
-'use client';
-
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import * as Localization from 'expo-localization';
+import { BottomTabBar } from '../components/BottomTabBar';
+import {
+  canGoToNextMonth,
+  canGoToPreviousMonth,
+  formatDateKeyShort,
+  formatMonthLabel,
+  getMonthBounds,
+  getWeekBounds,
+  addDays,
+  parseDateKey,
+  todayKey,
+} from '../utils/date';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -14,104 +22,67 @@ const currencyFormatter = new Intl.NumberFormat('es-MX', {
   minimumFractionDigits: 2,
 });
 
-const dateFormatter = new Intl.DateTimeFormat('es-MX', {
-  month: 'long',
-  year: 'numeric',
-});
+const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-const shortDateFormatter = new Intl.DateTimeFormat('es-MX', {
-  weekday: 'short',
-  day: 'numeric',
-});
-
-const getMonthBounds = (date: Date) => {
-  const start = new Date(date.getFullYear(), date.getMonth(), 1);
-  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
-  return { start, end };
-};
-
-const getWeekBounds = (date: Date) => {
-  const day = date.getDay(); // 0 = Sunday
-  const start = new Date(date);
-  start.setDate(date.getDate() - day);
-  start.setHours(0, 0, 0, 0);
-
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-
-  return { start, end };
-};
-
-const formatDateForDB = (date: Date) => {
-  return date.toISOString().split('T')[0];
-};
+const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 export default function HomeScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const db = useDatabase();
-  const params = useLocalSearchParams();
 
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [income, setIncome] = useState({ total: 0, count: 0 });
   const [expenses, setExpenses] = useState({ total: 0, count: 0 });
-  const [profit, setProfit] = useState(0);
   const [avgSale, setAvgSale] = useState(0);
-  const [topProducts, setTopProducts] = useState<Array<{
-    product_name: string;
-    total_quantity: number;
-    total_profit: number;
-  }>>([]);
-  const [weeklyData, setWeeklyData] = useState<Array<{
-    date: string;
-    income: number;
-    expense: number;
-  }>>([]);
+  const [topProducts, setTopProducts] = useState<
+    Array<{ product_name: string; total_quantity: number; total_profit: number }>
+  >([]);
+  const [weeklyData, setWeeklyData] = useState<
+    Array<{ date: string; income: number; expense: number }>
+  >([]);
   const [lowStockAlert, setLowStockAlert] = useState<{ name: string; stock: number }[]>([]);
-  const [expiringAlert, setExpiringAlert] = useState<{ name: string; expiry_date: string }[]>([]);
+  const [expiringAlert, setExpiringAlert] = useState<
+    { name: string; expiry_date: string }[]
+  >([]);
   const [showAlertPopup, setShowAlertPopup] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const userId = user?.id;
+  // Evita que el pop up vuelva a abrirse en cada cambio de estado después de
+  // que el usuario lo cerró.
+  const alertsAcknowledged = useRef(false);
 
-  const loadData = useCallback(async () => {
+  const userId = user?.id;
+  const monthBounds = useMemo(() => getMonthBounds(currentMonth), [currentMonth]);
+  const weekBounds = useMemo(() => getWeekBounds(new Date()), []);
+
+  const loadData = useCallback(() => {
     if (!userId || !db.initialized) return;
 
     setLoading(true);
-
-    const monthStart = formatDateForDB(getMonthBounds(currentMonth).start);
-    const monthEnd = formatDateForDB(getMonthBounds(currentMonth).end);
-    const weekStart = formatDateForDB(getWeekBounds(currentMonth).start);
-    const weekEnd = formatDateForDB(getWeekBounds(currentMonth).end);
-
-    const uid = userId as string;
-
     try {
-      const [incomeStats, expenseStats, topProds, weekly, lowStock, expiring] = await Promise.all([
-        Promise.resolve(db.getSalesStats(uid, monthStart, monthEnd)),
-        Promise.resolve(db.getExpensesStats(uid, monthStart, monthEnd)),
-        Promise.resolve(db.getTopProducts(uid, monthStart, monthEnd, 4)),
-        Promise.resolve(db.getWeeklySalesData(uid, weekStart, weekEnd)),
-        Promise.resolve(db.getLowStockProducts(uid)),
-        Promise.resolve(db.getExpiringProducts(uid, 7)),
-      ]);
+      const incomeStats = db.getSalesStats(userId, monthBounds.start, monthBounds.end);
+      const expenseStats = db.getExpensesStats(userId, monthBounds.start, monthBounds.end);
+      const topProds = db.getTopProducts(userId, monthBounds.start, monthBounds.end, 4);
+      const weekly = db.getWeeklySalesData(userId, weekBounds.start, weekBounds.end);
+      const lowStock = db.getLowStockProducts(userId);
+      const expiring = db.getExpiringProducts(userId, 7);
 
       setIncome({ total: incomeStats.total_amount, count: incomeStats.total_sales });
       setExpenses({ total: expenseStats.total_amount, count: expenseStats.total_expenses });
-      setProfit(incomeStats.total_amount - expenseStats.total_amount);
       setAvgSale(incomeStats.avg_sale);
       setTopProducts(topProds);
       setWeeklyData(weekly);
-      setLowStockAlert(lowStock.map(p => ({ name: p.name, stock: p.stock })));
-      setExpiringAlert(expiring.map(p => ({ name: p.name, expiry_date: p.expiry_date || '' })));
+      setLowStockAlert(lowStock.map((p) => ({ name: p.name, stock: p.stock })));
+      setExpiringAlert(
+        expiring.map((p) => ({ name: p.name, expiry_date: p.expiry_date || '' }))
+      );
     } catch (error) {
-      console.error('Error loading home data:', error);
+      console.error('Error al cargar el inicio:', error);
     } finally {
       setLoading(false);
     }
-  }, [userId, currentMonth, db]);
+  }, [userId, db, monthBounds.start, monthBounds.end, weekBounds.start, weekBounds.end]);
 
   useEffect(() => {
     loadData();
@@ -119,36 +90,26 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const hasAlerts = lowStockAlert.length > 0 || expiringAlert.length > 0;
-    if (hasAlerts && !showAlertPopup) {
+    if (hasAlerts && !alertsAcknowledged.current) {
       setShowAlertPopup(true);
     }
-  }, [lowStockAlert, expiringAlert, showAlertPopup]);
+  }, [lowStockAlert, expiringAlert]);
 
-  const monthLabel = dateFormatter.format(currentMonth);
-  const canGoBack = () => {
-    const now = new Date();
-    const prevMonth = new Date(currentMonth);
-    prevMonth.setMonth(prevMonth.getMonth() - 1);
-    return prevMonth.getMonth() === now.getMonth() - 1 || prevMonth.getFullYear() === now.getFullYear() - 1;
-  };
+  const profit = income.total - expenses.total;
+  const canGoBack = canGoToPreviousMonth(currentMonth);
+  const canGoForward = canGoToNextMonth(currentMonth);
 
   const handleMonthChange = (direction: 'prev' | 'next') => {
-    const newMonth = new Date(currentMonth);
-    if (direction === 'prev') {
-      newMonth.setMonth(newMonth.getMonth() - 1);
-      if (canGoBack()) {
-        setCurrentMonth(newMonth);
-      }
-    } else {
-      newMonth.setMonth(newMonth.getMonth() + 1);
-      const now = new Date();
-      if (newMonth.getMonth() === now.getMonth() && newMonth.getFullYear() === now.getFullYear()) {
-        setCurrentMonth(newMonth);
-      }
+    if (direction === 'prev' && canGoBack) {
+      setCurrentMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1));
+    }
+    if (direction === 'next' && canGoForward) {
+      setCurrentMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1));
     }
   };
 
   const handleCloseAlert = () => {
+    alertsAcknowledged.current = true;
     setShowAlertPopup(false);
   };
 
@@ -163,57 +124,50 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       {showAlertPopup && (
-        <AlertPopup
-          lowStock={lowStockAlert}
-          expiring={expiringAlert}
-          onClose={handleCloseAlert}
-        />
+        <AlertPopup lowStock={lowStockAlert} expiring={expiringAlert} onClose={handleCloseAlert} />
       )}
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.greeting}>Hola, {user?.name || 'Usuario'}</Text>
+            {user?.businessName ? (
+              <Text style={styles.businessName}>{user.businessName}</Text>
+            ) : null}
           </View>
-          <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/settings')}>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => router.push('/settings')}
+            accessibilityLabel="Ajustes de la cuenta"
+          >
             <Text style={styles.avatarText}>{user?.name?.charAt(0).toUpperCase() || 'U'}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Month Selector */}
         <View style={styles.monthSelector}>
           <TouchableOpacity
-            style={styles.monthNavButton}
+            style={[styles.monthNavButton, !canGoBack && styles.monthNavButtonDisabled]}
             onPress={() => handleMonthChange('prev')}
-            disabled={!canGoBack()}
+            disabled={!canGoBack}
+            accessibilityLabel="Mes anterior"
           >
-            <Text style={[
-              styles.monthNavIcon,
-              !canGoBack() && styles.monthNavIconDisabled,
-            ]}>
-              ‹
-            </Text>
+            <Text style={[styles.monthNavIcon, !canGoBack && styles.monthNavIconDisabled]}>‹</Text>
           </TouchableOpacity>
 
-          <Text style={styles.monthLabel}>{monthLabel}</Text>
+          <Text style={styles.monthLabel}>{capitalize(formatMonthLabel(currentMonth))}</Text>
 
           <TouchableOpacity
-            style={styles.monthNavButton}
+            style={[styles.monthNavButton, !canGoForward && styles.monthNavButtonDisabled]}
             onPress={() => handleMonthChange('next')}
-            disabled={currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()}
+            disabled={!canGoForward}
+            accessibilityLabel="Mes siguiente"
           >
-            <Text style={[
-              styles.monthNavIcon,
-              currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()
-                && styles.monthNavIconDisabled,
-            ]}>
+            <Text style={[styles.monthNavIcon, !canGoForward && styles.monthNavIconDisabled]}>
               ›
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Income Card */}
         <View style={styles.card}>
           <View style={styles.cardRow}>
             <View style={styles.cardInfo}>
@@ -221,33 +175,39 @@ export default function HomeScreen() {
               <Text style={styles.cardValueIncome}>{currencyFormatter.format(income.total)}</Text>
             </View>
             <View style={styles.cardBadge}>
-              <Text style={styles.cardBadgeText}>{income.count} ventas</Text>
+              <Text style={styles.cardBadgeText}>
+                {income.count} {income.count === 1 ? 'venta' : 'ventas'}
+              </Text>
             </View>
           </View>
         </View>
 
-        {/* Expense Card */}
         <View style={styles.card}>
           <View style={styles.cardRow}>
             <View style={styles.cardInfo}>
               <Text style={styles.cardLabel}>Egresos este mes</Text>
-              <Text style={styles.cardValueExpense}>{currencyFormatter.format(expenses.total)}</Text>
+              <Text style={styles.cardValueExpense}>
+                {currencyFormatter.format(expenses.total)}
+              </Text>
             </View>
             <View style={styles.cardBadge}>
-              <Text style={styles.cardBadgeText}>{expenses.count} registros</Text>
+              <Text style={styles.cardBadgeText}>
+                {expenses.count} {expenses.count === 1 ? 'registro' : 'registros'}
+              </Text>
             </View>
           </View>
         </View>
 
-        {/* Profit Card */}
         <View style={styles.cardProfit}>
           <View style={styles.profitRow}>
             <View>
               <Text style={styles.profitLabel}>Ganancia neta</Text>
-              <Text style={[
-                styles.profitValue,
-                profit >= 0 ? styles.profitPositive : styles.profitNegative,
-              ]}>
+              <Text
+                style={[
+                  styles.profitValue,
+                  profit >= 0 ? styles.profitPositive : styles.profitNegative,
+                ]}
+              >
                 {currencyFormatter.format(profit)}
               </Text>
             </View>
@@ -258,28 +218,25 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Weekly Chart */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Ventas vs Gastos de esta semana</Text>
-          <WeeklyChart data={weeklyData} />
+          <Text style={styles.sectionTitle}>Ventas vs gastos de esta semana</Text>
+          <WeeklyChart data={weeklyData} weekStart={weekBounds.start} />
         </View>
 
-        {/* Top Products */}
         <View style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Productos más vendidos</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Productos más vendidos</Text>
           {topProducts.length === 0 ? (
             <Text style={styles.emptyText}>No hay ventas este mes</Text>
           ) : (
             <View style={styles.topProductsList}>
               {topProducts.map((product, index) => (
-                <View key={product.product_name} style={styles.topProductRow}>
+                <View key={`${product.product_name}-${index}`} style={styles.topProductRow}>
                   <Text style={styles.topProductRank}>#{index + 1}</Text>
                   <View style={styles.topProductInfo}>
                     <Text style={styles.topProductName}>{product.product_name}</Text>
                     <Text style={styles.topProductMeta}>
-                      {product.total_quantity} vendidos • {currencyFormatter.format(product.total_profit)} ganancia
+                      {product.total_quantity} vendidos •{' '}
+                      {currencyFormatter.format(product.total_profit)} ganancia
                     </Text>
                   </View>
                 </View>
@@ -289,34 +246,11 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom Tab Bar */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity style={styles.tabItemActive} onPress={() => router.replace('/home')}>
-          <Text style={styles.tabIcon}>🏠</Text>
-          <Text style={styles.tabLabelActive}>Inicio</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/movements')}>
-          <Text style={styles.tabIcon}>💰</Text>
-          <Text style={styles.tabLabel}>Movimientos</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/catalog')}>
-          <Text style={styles.tabIcon}>📦</Text>
-          <Text style={styles.tabLabel}>Catálogo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/tasks')}>
-          <Text style={styles.tabIcon}>✅</Text>
-          <Text style={styles.tabLabel}>Tareas</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/reports')}>
-          <Text style={styles.tabIcon}>📊</Text>
-          <Text style={styles.tabLabel}>Informes</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomTabBar active="home" />
     </View>
   );
 }
 
-// Alert Popup Component
 function AlertPopup({
   lowStock,
   expiring,
@@ -338,8 +272,10 @@ function AlertPopup({
           <View style={styles.alertSection}>
             <Text style={styles.alertSectionTitle}>Stock bajo</Text>
             {lowStock.map((item, index) => (
-              <View key={index} style={styles.alertItem}>
-                <Text style={styles.alertItemName}>{item.name}</Text>
+              <View key={`stock-${index}`} style={styles.alertItem}>
+                <Text style={styles.alertItemName} numberOfLines={1}>
+                  {item.name}
+                </Text>
                 <Text style={styles.alertItemValue}>{item.stock} unidades</Text>
               </View>
             ))}
@@ -350,9 +286,13 @@ function AlertPopup({
           <View style={styles.alertSection}>
             <Text style={styles.alertSectionTitle}>Próximos a caducar</Text>
             {expiring.map((item, index) => (
-              <View key={index} style={styles.alertItem}>
-                <Text style={styles.alertItemName}>{item.name}</Text>
-                <Text style={styles.alertItemValue}>Caduca: {item.expiry_date}</Text>
+              <View key={`expiry-${index}`} style={styles.alertItem}>
+                <Text style={styles.alertItemName} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={styles.alertItemValue}>
+                  Caduca: {formatDateKeyShort(item.expiry_date)}
+                </Text>
               </View>
             ))}
           </View>
@@ -366,47 +306,60 @@ function AlertPopup({
   );
 }
 
-// Weekly Chart Component
-function WeeklyChart({ data }: { data: Array<{ date: string; income: number; expense: number }> }) {
-  const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  const maxValue = Math.max(
-    ...data.map(d => Math.max(d.income, d.expense)),
-    1
-  );
-
-  const chartData = days.map((day, index) => {
-    const dayData = data.find(d => {
-      const date = new Date(d.date);
-      return date.getDay() === index;
+function WeeklyChart({
+  data,
+  weekStart,
+}: {
+  data: Array<{ date: string; income: number; expense: number }>;
+  weekStart: string;
+}) {
+  const chartData = useMemo(() => {
+    const start = parseDateKey(weekStart) ?? new Date();
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = addDays(start, index);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+        date.getDate()
+      ).padStart(2, '0')}`;
+      const match = data.find((item) => item.date === key);
+      return {
+        key,
+        label: DAY_LABELS[index],
+        accessibleLabel: DAY_NAMES[index],
+        income: match?.income ?? 0,
+        expense: match?.expense ?? 0,
+      };
     });
-    return {
-      day,
-      income: dayData?.income || 0,
-      expense: dayData?.expense || 0,
-    };
-  });
+  }, [data, weekStart]);
 
-  const maxIncome = Math.max(...chartData.map(d => d.income), 1);
-  const maxExpense = Math.max(...chartData.map(d => d.expense), 1);
-  const overallMax = Math.max(maxIncome, maxExpense);
+  const overallMax = Math.max(...chartData.map((d) => Math.max(d.income, d.expense)), 1);
+  const today = todayKey();
 
   return (
     <View style={styles.chartContainer}>
       <View style={styles.chartBars}>
-        {chartData.map((item, index) => (
-          <View key={index} style={styles.chartBarGroup}>
+        {chartData.map((item) => (
+          <View key={item.key} style={styles.chartBarGroup}>
             <View style={styles.chartBarsWrapper}>
-              <View style={[
-                styles.chartBar,
-                { height: overallMax > 0 ? (item.income / overallMax) * 150 : 0 },
-              ]} />
-              <View style={[
-                styles.chartBar,
-                { height: overallMax > 0 ? (item.expense / overallMax) * 150 : 0 },
-                styles.chartBarExpense,
-              ]} />
+              <View
+                style={[
+                  styles.chartBar,
+                  { height: Math.max((item.income / overallMax) * 150, 2) },
+                ]}
+              />
+              <View
+                style={[
+                  styles.chartBar,
+                  styles.chartBarExpense,
+                  { height: Math.max((item.expense / overallMax) * 150, 2) },
+                ]}
+              />
             </View>
-            <Text style={styles.chartDayLabel}>{item.day}</Text>
+            <Text
+              style={[styles.chartDayLabel, item.key === today && styles.chartDayLabelToday]}
+              accessibilityLabel={item.accessibleLabel}
+            >
+              {item.label}
+            </Text>
           </View>
         ))}
       </View>
@@ -435,7 +388,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 100,
+    paddingBottom: 110,
   },
   loadingContainer: {
     flex: 1,
@@ -452,14 +405,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
+    gap: 12,
   },
   headerLeft: {
     flex: 1,
   },
   greeting: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: '#18181B',
+  },
+  businessName: {
+    fontSize: 14,
+    color: '#A1A1AA',
+    marginTop: 2,
+    fontWeight: '500',
   },
   settingsButton: {
     width: 44,
@@ -496,6 +456,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  monthNavButtonDisabled: {
+    opacity: 0.4,
+  },
   monthNavIcon: {
     fontSize: 24,
     fontWeight: '300',
@@ -508,7 +471,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#18181B',
-    minWidth: 140,
+    minWidth: 170,
     textAlign: 'center',
   },
   card: {
@@ -528,6 +491,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
   cardInfo: {
     flex: 1,
@@ -569,6 +533,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
   profitLabel: {
     fontSize: 14,
@@ -606,12 +571,6 @@ const styles = StyleSheet.create({
     color: '#18181B',
     marginBottom: 16,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
   chartContainer: {
     gap: 12,
   },
@@ -620,7 +579,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-around',
     height: 180,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
   },
   chartBarGroup: {
     alignItems: 'center',
@@ -634,7 +593,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   chartBar: {
-    width: 16,
+    width: 14,
     borderRadius: 4,
     backgroundColor: '#10B981',
     minHeight: 2,
@@ -646,6 +605,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
     color: '#27272A',
+  },
+  chartDayLabelToday: {
+    color: '#6366F1',
+    fontWeight: '700',
   },
   chartLegend: {
     flexDirection: 'row',
@@ -701,45 +664,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 20,
   },
-  tabBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E4E4E7',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    justifyContent: 'space-around',
-  },
-  tabItem: {
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  tabItemActive: {
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  tabIcon: {
-    fontSize: 22,
-  },
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#A1A1AA',
-  },
-  tabLabelActive: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6366F1',
-  },
-  // Alert styles
   alertOverlay: {
     position: 'absolute',
     top: 0,
@@ -758,11 +682,7 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 340,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 10,
+    maxHeight: '80%',
   },
   alertHeader: {
     flexDirection: 'row',
@@ -790,6 +710,7 @@ const styles = StyleSheet.create({
   alertItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 8,
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F4F4F5',
@@ -798,6 +719,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: '#18181B',
+    flex: 1,
   },
   alertItemValue: {
     fontSize: 14,

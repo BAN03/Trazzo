@@ -2,13 +2,11 @@
 
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
-import { useColorScheme } from 'react-native';
 import { useAuthStore } from '../hooks/useAuthStore';
+import { BottomTabBar } from '../components/BottomTabBar';
 
 export default function TasksScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
 
   return (
     <View style={styles.container}>
@@ -63,29 +61,7 @@ export default function TasksScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom Tab Bar */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.replace('/home')}>
-          <Text style={styles.tabIcon}>🏠</Text>
-          <Text style={styles.tabLabel}>Inicio</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/movements')}>
-          <Text style={styles.tabIcon}>💰</Text>
-          <Text style={styles.tabLabel}>Movimientos</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/catalog')}>
-          <Text style={styles.tabIcon}>📦</Text>
-          <Text style={styles.tabLabel}>Catálogo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItemActive} onPress={() => router.replace('/tasks')}>
-          <Text style={styles.tabIcon}>✅</Text>
-          <Text style={styles.tabLabelActive}>Tareas</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/reports')}>
-          <Text style={styles.tabIcon}>📊</Text>
-          <Text style={styles.tabLabel}>Informes</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomTabBar active="tasks" />
     </View>
   );
 }
@@ -211,43 +187,5 @@ const styles = StyleSheet.create({
     color: '#A1A1AA',
     textAlign: 'center',
     lineHeight: 22,
-  },
-  tabBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E4E4E7',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    justifyContent: 'space-around',
-  },
-  tabItem: {
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  tabItemActive: {
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  tabIcon: {
-    fontSize: 22,
-  },
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#A1A1AA',
-  },
-  tabLabelActive: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6366F1',
   },
 });

@@ -1,12 +1,18 @@
 'use client';
 
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
+import { BottomTabBar } from '../components/BottomTabBar';
 import React, { useEffect, useState, useCallback } from 'react';
-import * as Localization from 'expo-localization';
+import {
+  canGoToNextMonth,
+  canGoToPreviousMonth,
+  formatDateKeyDayMonth,
+  formatMonthLabel,
+  getMonthBounds,
+} from '../utils/date';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -14,25 +20,7 @@ const currencyFormatter = new Intl.NumberFormat('es-MX', {
   minimumFractionDigits: 2,
 });
 
-const dateFormatter = new Intl.DateTimeFormat('es-MX', {
-  month: 'long',
-  year: 'numeric',
-});
-
-const dayMonthFormatter = new Intl.DateTimeFormat('es-MX', {
-  day: 'numeric',
-  month: 'short',
-});
-
-const formatDateForDB = (date: Date) => {
-  return date.toISOString().split('T')[0];
-};
-
-const getMonthBounds = (date: Date) => {
-  const start = new Date(date.getFullYear(), date.getMonth(), 1);
-  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
-  return { start, end };
-};
+const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   efectivo: 'Efectivo',
@@ -54,11 +42,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function MovementsScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const db = useDatabase();
-  const params = useLocalSearchParams();
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'sales' | 'expenses'>('sales');
@@ -90,15 +75,14 @@ export default function MovementsScreen() {
 
     setLoading(true);
 
-    const monthStart = formatDateForDB(getMonthBounds(currentMonth).start);
-    const monthEnd = formatDateForDB(getMonthBounds(currentMonth).end);
+    const monthBounds = getMonthBounds(currentMonth);
 
     try {
       const [salesData, expenseData, incomeS, expenseS] = await Promise.all([
-        Promise.resolve(db.getSales(userId, monthStart, monthEnd)),
-        Promise.resolve(db.getExpenses(userId, monthStart, monthEnd)),
-        Promise.resolve(db.getSalesStats(userId, monthStart, monthEnd)),
-        Promise.resolve(db.getExpensesStats(userId, monthStart, monthEnd)),
+        Promise.resolve(db.getSales(userId, monthBounds.start, monthBounds.end)),
+        Promise.resolve(db.getExpenses(userId, monthBounds.start, monthBounds.end)),
+        Promise.resolve(db.getSalesStats(userId, monthBounds.start, monthBounds.end)),
+        Promise.resolve(db.getExpensesStats(userId, monthBounds.start, monthBounds.end)),
       ]);
 
       setSales(salesData);
@@ -116,27 +100,16 @@ export default function MovementsScreen() {
     loadData();
   }, [loadData]);
 
-  const monthLabel = dateFormatter.format(currentMonth);
-  const canGoBack = () => {
-    const now = new Date();
-    const prevMonth = new Date(currentMonth);
-    prevMonth.setMonth(prevMonth.getMonth() - 1);
-    return prevMonth.getMonth() === now.getMonth() - 1 || prevMonth.getFullYear() === now.getFullYear() - 1;
-  };
+  const monthLabel = capitalize(formatMonthLabel(currentMonth));
+  const canGoBack = canGoToPreviousMonth(currentMonth);
+  const canGoForward = canGoToNextMonth(currentMonth);
 
   const handleMonthChange = (direction: 'prev' | 'next') => {
-    const newMonth = new Date(currentMonth);
-    if (direction === 'prev') {
-      newMonth.setMonth(newMonth.getMonth() - 1);
-      if (canGoBack()) {
-        setCurrentMonth(newMonth);
-      }
-    } else {
-      newMonth.setMonth(newMonth.getMonth() + 1);
-      const now = new Date();
-      if (newMonth.getMonth() === now.getMonth() && newMonth.getFullYear() === now.getFullYear()) {
-        setCurrentMonth(newMonth);
-      }
+    if (direction === 'prev' && canGoBack) {
+      setCurrentMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1));
+    }
+    if (direction === 'next' && canGoForward) {
+      setCurrentMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1));
     }
   };
 
@@ -200,30 +173,23 @@ export default function MovementsScreen() {
         {/* Month Selector */}
         <View style={styles.monthSelector}>
           <TouchableOpacity
-            style={styles.monthNavButton}
+            style={[styles.monthNavButton, !canGoBack && styles.monthNavButtonDisabled]}
             onPress={() => handleMonthChange('prev')}
-            disabled={!canGoBack()}
+            disabled={!canGoBack}
+            accessibilityLabel="Mes anterior"
           >
-            <Text style={[
-              styles.monthNavIcon,
-              !canGoBack() && styles.monthNavIconDisabled,
-            ]}>
-              ‹
-            </Text>
+            <Text style={[styles.monthNavIcon, !canGoBack && styles.monthNavIconDisabled]}>‹</Text>
           </TouchableOpacity>
 
           <Text style={styles.monthLabel}>{monthLabel}</Text>
 
           <TouchableOpacity
-            style={styles.monthNavButton}
+            style={[styles.monthNavButton, !canGoForward && styles.monthNavButtonDisabled]}
             onPress={() => handleMonthChange('next')}
-            disabled={currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()}
+            disabled={!canGoForward}
+            accessibilityLabel="Mes siguiente"
           >
-            <Text style={[
-              styles.monthNavIcon,
-              currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()
-                && styles.monthNavIconDisabled,
-            ]}>
+            <Text style={[styles.monthNavIcon, !canGoForward && styles.monthNavIconDisabled]}>
               ›
             </Text>
           </TouchableOpacity>
@@ -319,9 +285,7 @@ export default function MovementsScreen() {
                   onPress={() => handleEditSale(sale.id)}
                 >
                   <View style={styles.listItemLeft}>
-                    <Text style={styles.listItemDate}>
-                      {dayMonthFormatter.format(new Date(sale.date))}
-                    </Text>
+                    <Text style={styles.listItemDate}>{formatDateKeyDayMonth(sale.date)}</Text>
                     <View style={styles.listItemMeta}>
                       <Text style={styles.listItemPayment}>
                         {PAYMENT_METHOD_LABELS[sale.payment_method] || sale.payment_method}
@@ -364,7 +328,7 @@ export default function MovementsScreen() {
                 >
                   <View style={styles.listItemLeft}>
                     <Text style={styles.listItemDate}>
-                      {dayMonthFormatter.format(new Date(expense.date))}
+                      {formatDateKeyDayMonth(expense.date)}
                     </Text>
                     <View style={styles.listItemMeta}>
                       <Text style={styles.listItemDescription}>{expense.description}</Text>
@@ -385,29 +349,7 @@ export default function MovementsScreen() {
         )}
       </ScrollView>
 
-      {/* Bottom Tab Bar */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.replace('/home')}>
-          <Text style={styles.tabIcon}>🏠</Text>
-          <Text style={styles.tabLabel}>Inicio</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItemActive} onPress={() => router.replace('/movements')}>
-          <Text style={styles.tabIcon}>💰</Text>
-          <Text style={styles.tabLabelActive}>Movimientos</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/catalog')}>
-          <Text style={styles.tabIcon}>📦</Text>
-          <Text style={styles.tabLabel}>Catálogo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/tasks')}>
-          <Text style={styles.tabIcon}>✅</Text>
-          <Text style={styles.tabLabel}>Tareas</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/reports')}>
-          <Text style={styles.tabIcon}>📊</Text>
-          <Text style={styles.tabLabel}>Informes</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomTabBar active="movements" />
     </View>
   );
 }
@@ -483,6 +425,9 @@ const styles = StyleSheet.create({
     borderColor: '#E4E4E7',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  monthNavButtonDisabled: {
+    opacity: 0.4,
   },
   monthNavIcon: {
     fontSize: 24,
@@ -686,43 +631,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#A1A1AA',
     textAlign: 'center',
-  },
-  tabBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E4E4E7',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    justifyContent: 'space-around',
-  },
-  tabItem: {
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  tabItemActive: {
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  tabIcon: {
-    fontSize: 22,
-  },
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#A1A1AA',
-  },
-  tabLabelActive: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6366F1',
   },
 });

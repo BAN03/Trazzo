@@ -1,10 +1,21 @@
 'use client';
 
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Alert } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  Alert,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
+import { BottomTabBar } from '../components/BottomTabBar';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
@@ -13,14 +24,9 @@ const currencyFormatter = new Intl.NumberFormat('es-MX', {
   minimumFractionDigits: 2,
 });
 
-const UNITS = ['pz', 'kg', 'g', 'L', 'ml', 'm', 'cm', 'unidad', 'paquete', 'caja'];
-
 export default function CatalogScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const db = useDatabase();
-  const params = useLocalSearchParams();
 
   const [activeTab, setActiveTab] = useState<'products' | 'supplies'>('products');
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,6 +46,13 @@ export default function CatalogScreen() {
   const [loading, setLoading] = useState(true);
   const [inventoryValue, setInventoryValue] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
+  const [purchaseTarget, setPurchaseTarget] = useState<{
+    id: string;
+    name: string;
+    unit: string;
+  } | null>(null);
+  const [purchaseQuantity, setPurchaseQuantity] = useState('1');
+  const [purchaseError, setPurchaseError] = useState('');
 
   const userId = user?.id;
   const currentType = activeTab === 'products' ? 'product' : 'supply';
@@ -52,11 +65,13 @@ export default function CatalogScreen() {
       const data = db.getProducts(userId, currentType);
       setProducts(data);
 
-      // Calculate inventory value
-      const value = data.reduce((sum, p) => sum + (p.sale_price * p.stock), 0);
+      // Los productos se valúan a precio de venta; los insumos a costo.
+      const value = data.reduce(
+        (sum, p) => sum + (currentType === 'product' ? p.sale_price : p.cost_price) * p.stock,
+        0
+      );
       setInventoryValue(value);
 
-      // Count low stock
       const low = data.filter(p => p.stock <= p.min_stock && p.min_stock > 0).length;
       setLowStockCount(low);
     } catch (error) {
@@ -72,39 +87,37 @@ export default function CatalogScreen() {
   }, [activeTab, loadData]);
 
   const filteredProducts = useMemo(() => {
-    if (!searchQuery) return products;
-    return products.filter(p =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase())
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return products;
+    return products.filter(
+      p => p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query)
     );
   }, [products, searchQuery]);
 
-  const handleBuySupply = (supplyId: string) => {
-    const supply = products.find(p => p.id === supplyId);
-    if (!supply) return;
+  const openPurchaseModal = (product: { id: string; name: string; unit: string }) => {
+    setPurchaseTarget(product);
+    setPurchaseQuantity('1');
+    setPurchaseError('');
+  };
 
-    Alert.prompt(
-      `Comprar ${supply.name}`,
-      `Ingresa la cantidad de ${supply.unit} a agregar al stock:`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Agregar',
-          onPress: (value: string) => {
-            const qty = parseInt(value);
-            if (!qty || qty <= 0) {
-              Alert.alert('Error', 'La cantidad debe ser mayor a 0');
-              return;
-            }
-            db.updateProductStock(supplyId, qty);
-            loadData();
-          },
-        },
-      ],
-      'plain-text',
-      '1',
-      'numeric'
-    );
+  const closePurchaseModal = () => {
+    setPurchaseTarget(null);
+    setPurchaseError('');
+  };
+
+  const confirmPurchase = () => {
+    if (!purchaseTarget) return;
+    const clean = purchaseQuantity.replace(/[^0-9]/g, '');
+    const quantity = Number(clean);
+
+    if (!clean || !Number.isFinite(quantity) || quantity <= 0) {
+      setPurchaseError('Ingresa una cantidad mayor a 0');
+      return;
+    }
+
+    db.updateProductStock(purchaseTarget.id, quantity);
+    closePurchaseModal();
+    loadData();
   };
 
   const handleDeleteProduct = (productId: string, productName: string) => {
@@ -132,7 +145,6 @@ export default function CatalogScreen() {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.title}>Catálogo</Text>
@@ -143,7 +155,6 @@ export default function CatalogScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Inventory Summary */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
@@ -152,59 +163,48 @@ export default function CatalogScreen() {
             </View>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Stock bajo</Text>
-              <Text style={[
-                styles.summaryValue,
-                lowStockCount > 0 && styles.summaryValueWarning,
-              ]}>
+              <Text
+                style={[styles.summaryValue, lowStockCount > 0 && styles.summaryValueWarning]}
+              >
                 {lowStockCount} {lowStockCount === 1 ? 'artículo' : 'artículos'}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Tab Selector */}
         <View style={styles.tabSelector}>
           <TouchableOpacity
-            style={[
-              styles.tabButton,
-              activeTab === 'products' && styles.tabButtonActive,
-            ]}
+            style={[styles.tabButton, activeTab === 'products' && styles.tabButtonActive]}
             onPress={() => setActiveTab('products')}
           >
-            <Text style={[
-              styles.tabButtonText,
-              activeTab === 'products' && styles.tabButtonTextActive,
-            ]}>
+            <Text
+              style={[styles.tabButtonText, activeTab === 'products' && styles.tabButtonTextActive]}
+            >
               Productos
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.tabButton,
-              activeTab === 'supplies' && styles.tabButtonActive,
-            ]}
+            style={[styles.tabButton, activeTab === 'supplies' && styles.tabButtonActive]}
             onPress={() => setActiveTab('supplies')}
           >
-            <Text style={[
-              styles.tabButtonText,
-              activeTab === 'supplies' && styles.tabButtonTextActive,
-            ]}>
+            <Text
+              style={[styles.tabButtonText, activeTab === 'supplies' && styles.tabButtonTextActive]}
+            >
               Insumos
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Search */}
         <TextInput
           style={styles.searchInput}
-          placeholder="Buscar producto/insumo..."
+          placeholder="Buscar por nombre o categoría..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor="#A1A1AA"
+          autoCorrect={false}
         />
 
-        {/* Add Button */}
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => router.push(activeTab === 'products' ? '/product/new' : '/supply/new')}
@@ -214,15 +214,18 @@ export default function CatalogScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* List */}
         {filteredProducts.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📦</Text>
             <Text style={styles.emptyText}>
-              No hay {activeTab === 'products' ? 'productos' : 'insumos'} registrados
+              {searchQuery
+                ? 'Sin resultados'
+                : `No hay ${activeTab === 'products' ? 'productos' : 'insumos'} registrados`}
             </Text>
             <Text style={styles.emptySubtext}>
-              Presiona "Agregar {activeTab === 'products' ? 'producto' : 'insumo'}" para empezar
+              {searchQuery
+                ? 'Prueba con otro nombre o categoría'
+                : `Presiona "Agregar ${activeTab === 'products' ? 'producto' : 'insumo'}" para empezar`}
             </Text>
           </View>
         ) : (
@@ -236,6 +239,8 @@ export default function CatalogScreen() {
                     ? `/product/edit/${product.id}`
                     : `/supply/edit/${product.id}`
                 )}
+                onLongPress={() => handleDeleteProduct(product.id, product.name)}
+                delayLongPress={500}
               >
                 <View style={styles.listItemLeft}>
                   <Text style={styles.listItemName}>{product.name}</Text>
@@ -260,7 +265,7 @@ export default function CatalogScreen() {
                       style={styles.buyButton}
                       onPress={(e) => {
                         e.stopPropagation();
-                        handleBuySupply(product.id);
+                        openPurchaseModal(product);
                       }}
                     >
                       <Text style={styles.buyButtonText}>Comprar</Text>
@@ -273,29 +278,48 @@ export default function CatalogScreen() {
         )}
       </ScrollView>
 
-      {/* Bottom Tab Bar */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.replace('/home')}>
-          <Text style={styles.tabIcon}>🏠</Text>
-          <Text style={styles.tabLabel}>Inicio</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/movements')}>
-          <Text style={styles.tabIcon}>💰</Text>
-          <Text style={styles.tabLabel}>Movimientos</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItemActive} onPress={() => router.replace('/catalog')}>
-          <Text style={styles.tabIcon}>📦</Text>
-          <Text style={styles.tabLabelActive}>Catálogo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/tasks')}>
-          <Text style={styles.tabIcon}>✅</Text>
-          <Text style={styles.tabLabel}>Tareas</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/reports')}>
-          <Text style={styles.tabIcon}>📊</Text>
-          <Text style={styles.tabLabel}>Informes</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomTabBar active="catalog" />
+
+      <Modal
+        visible={purchaseTarget !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={closePurchaseModal}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Comprar {purchaseTarget?.name}</Text>
+            <Text style={styles.modalSubtitle}>
+              Cantidad de {purchaseTarget?.unit} a agregar al stock
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              value={purchaseQuantity}
+              onChangeText={(value) => {
+                setPurchaseQuantity(value);
+                if (purchaseError) setPurchaseError('');
+              }}
+              keyboardType="number-pad"
+              placeholder="1"
+              placeholderTextColor="#A1A1AA"
+              autoFocus
+              selectTextOnFocus
+            />
+            {purchaseError ? <Text style={styles.modalError}>{purchaseError}</Text> : null}
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancel} onPress={closePurchaseModal}>
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalConfirm} onPress={confirmPurchase}>
+                <Text style={styles.modalConfirmText}>Agregar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -546,42 +570,72 @@ const styles = StyleSheet.create({
     color: '#A1A1AA',
     textAlign: 'center',
   },
-  tabBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(24, 24, 27, 0.45)',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  modalCard: {
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E4E4E7',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    justifyContent: 'space-around',
+    borderRadius: 20,
+    padding: 24,
   },
-  tabItem: {
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#18181B',
   },
-  tabItemActive: {
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#71717A',
+    marginTop: 4,
+    marginBottom: 16,
   },
-  tabIcon: {
-    fontSize: 22,
-  },
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#A1A1AA',
-  },
-  tabLabelActive: {
-    fontSize: 11,
+  modalInput: {
+    backgroundColor: '#FAFAFA',
+    borderWidth: 2,
+    borderColor: '#E4E4E7',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#6366F1',
+    color: '#18181B',
+  },
+  modalError: {
+    fontSize: 13,
+    color: '#EF4444',
+    marginTop: 8,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  modalCancel: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#27272A',
+  },
+  modalConfirm: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
