@@ -1,0 +1,7 @@
+<svg width="1242" height="2436" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1242" height="2436" fill="#FAFAFA"/>
+  <text x="621" y="1100" font-family="system-ui, sans-serif" font-size="120" font-weight="800" fill="#18181B" text-anchor="middle">Trazzo</text>
+  <text x="621" y="1250" font-family="system-ui, sans-serif" font-size="40" font-weight="400" fill="#27272A" text-anchor="middle">Tu negocio, bajo control</text>
+  <circle cx="621" cy="1500" r="60" fill="#6366F1"/>
+  <text x="621" y="1520" font-family="system-ui, sans-serif" font-size="50" font-weight="700" fill="#FFFFFF" text-anchor="middle">T</text>
+</svg>
