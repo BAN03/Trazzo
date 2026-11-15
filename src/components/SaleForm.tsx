@@ -80,7 +80,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
   const products = useMemo(() => {
     if (!userId || !db.initialized) return [];
     return db.getProducts(userId, 'product');
-  }, [userId, db.initialized]);
+  }, [userId, db]);
 
   const topProducts = useMemo(() => {
     if (!userId || !db.initialized) return products.slice(0, 5);
@@ -107,7 +107,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
     } catch {
       return products.slice(0, 5);
     }
-  }, [userId, db.initialized, products, db]);
+  }, [userId, products, db]);
 
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();

@@ -4,7 +4,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 /// <reference path="../../typings/thenable.d.ts" preserve="true"/>
-var __importDefault = (this && this.__importDefault) || function (mod) {
+let __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });

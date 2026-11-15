@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export type TabKey = 'home' | 'movements' | 'catalog' | 'tasks' | 'reports';
 
-const TABS: Array<{ key: TabKey; label: string; icon: string; path: string }> = [
+const TABS: { key: TabKey; label: string; icon: string; path: string }[] = [
   { key: 'home', label: 'Inicio', icon: '🏠', path: '/home' },
   { key: 'movements', label: 'Movimientos', icon: '💰', path: '/movements' },
   { key: 'catalog', label: 'Catálogo', icon: '📦', path: '/catalog' },

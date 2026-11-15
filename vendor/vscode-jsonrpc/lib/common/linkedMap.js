@@ -5,7 +5,7 @@
  *--------------------------------------------------------------------------------------------*/
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LRUCache = exports.LinkedMap = exports.Touch = void 0;
-var Touch;
+let Touch;
 (function (Touch) {
     Touch.None = 0;
     Touch.First = 1;

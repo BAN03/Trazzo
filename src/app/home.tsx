@@ -36,10 +36,10 @@ export default function HomeScreen() {
   const [expenses, setExpenses] = useState({ total: 0, count: 0 });
   const [avgSale, setAvgSale] = useState(0);
   const [topProducts, setTopProducts] = useState<
-    Array<{ product_name: string; total_quantity: number; total_profit: number }>
+    { product_name: string; total_quantity: number; total_profit: number }[]
   >([]);
   const [weeklyData, setWeeklyData] = useState<
-    Array<{ date: string; income: number; expense: number }>
+    { date: string; income: number; expense: number }[]
   >([]);
   const [lowStockAlert, setLowStockAlert] = useState<{ name: string; stock: number }[]>([]);
   const [expiringAlert, setExpiringAlert] = useState<
@@ -310,7 +310,7 @@ function WeeklyChart({
   data,
   weekStart,
 }: {
-  data: Array<{ date: string; income: number; expense: number }>;
+  data: { date: string; income: number; expense: number }[];
   weekStart: string;
 }) {
   const chartData = useMemo(() => {

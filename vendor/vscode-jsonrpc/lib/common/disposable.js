@@ -5,7 +5,7 @@
  *--------------------------------------------------------------------------------------------*/
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Disposable = void 0;
-var Disposable;
+let Disposable;
 (function (Disposable) {
     function create(func) {
         return {

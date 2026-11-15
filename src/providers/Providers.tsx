@@ -16,7 +16,7 @@ export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hasHydrated || !user || !db.initialized) return;
     db.ensureAuthUser(user);
-  }, [hasHydrated, user, db.initialized, db.ensureAuthUser]);
+  }, [hasHydrated, user, db]);
 
   return <SafeAreaProvider>{children}</SafeAreaProvider>;
 }

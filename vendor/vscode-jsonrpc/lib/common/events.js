@@ -3,13 +3,13 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
-var __importDefault = (this && this.__importDefault) || function (mod) {
+let __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Emitter = exports.Event = void 0;
 const ral_1 = __importDefault(require("./ral"));
-var Event;
+let Event;
 (function (Event) {
     const _disposable = { dispose() { } };
     Event.None = function () { return _disposable; };

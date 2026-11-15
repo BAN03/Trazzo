@@ -5,7 +5,7 @@
  * ------------------------------------------------------------------------------------------ */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Encodings = void 0;
-var Encodings;
+let Encodings;
 (function (Encodings) {
     function getEncodingHeaderValue(encodings) {
         if (encodings.length === 1) {

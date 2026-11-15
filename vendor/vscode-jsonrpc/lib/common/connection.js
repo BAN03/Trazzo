@@ -4,9 +4,9 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 /// <reference path="../../typings/thenable.d.ts" preserve="true"/>
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+let __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
+    let desc = Object.getOwnPropertyDescriptor(m, k);
     if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
       desc = { enumerable: true, get: function() { return m[k]; } };
     }
@@ -15,29 +15,29 @@ var __createBinding = (this && this.__createBinding) || (Object.create ? (functi
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
 }));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+let __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
     Object.defineProperty(o, "default", { enumerable: true, value: v });
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
+let __importStar = (this && this.__importStar) || (function () {
+    let ownKeys = function(o) {
         ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            let ar = [];
+            for (let k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
             return ar;
         };
         return ownKeys(o);
     };
     return function (mod) {
         if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        let result = {};
+        if (mod != null) for (let k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
         __setModuleDefault(result, mod);
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
+let __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -49,18 +49,18 @@ const messages_1 = require("./messages");
 const linkedMap_1 = require("./linkedMap");
 const events_1 = require("./events");
 const cancellation_1 = require("./cancellation");
-var CancelNotification;
+let CancelNotification;
 (function (CancelNotification) {
     CancelNotification.type = new messages_1.NotificationType('$/cancelRequest');
 })(CancelNotification || (CancelNotification = {}));
-var ProgressToken;
+let ProgressToken;
 (function (ProgressToken) {
     function is(value) {
         return typeof value === 'string' || typeof value === 'number';
     }
     ProgressToken.is = is;
 })(ProgressToken || (exports.ProgressToken = ProgressToken = {}));
-var ProgressNotification;
+let ProgressNotification;
 (function (ProgressNotification) {
     ProgressNotification.type = new messages_1.NotificationType('$/progress');
 })(ProgressNotification || (ProgressNotification = {}));
@@ -75,7 +75,7 @@ class ProgressType {
     }
 }
 exports.ProgressType = ProgressType;
-var StarRequestHandler;
+let StarRequestHandler;
 (function (StarRequestHandler) {
     function is(value) {
         return Is.func(value);
@@ -88,14 +88,14 @@ exports.NullLogger = Object.freeze({
     info: () => { },
     log: () => { }
 });
-var Trace;
+let Trace;
 (function (Trace) {
     Trace[Trace["Off"] = 0] = "Off";
     Trace[Trace["Messages"] = 1] = "Messages";
     Trace[Trace["Compact"] = 2] = "Compact";
     Trace[Trace["Verbose"] = 3] = "Verbose";
 })(Trace || (exports.Trace = Trace = {}));
-var TraceValue;
+let TraceValue;
 (function (TraceValue) {
     /**
      * Turn tracing off.
@@ -154,7 +154,7 @@ exports.TraceValues = TraceValue;
     }
     Trace.toString = toString;
 })(Trace || (exports.Trace = Trace = {}));
-var TraceFormat;
+let TraceFormat;
 (function (TraceFormat) {
     TraceFormat["Text"] = "text";
     TraceFormat["JSON"] = "json";
@@ -174,15 +174,15 @@ var TraceFormat;
     }
     TraceFormat.fromString = fromString;
 })(TraceFormat || (exports.TraceFormat = TraceFormat = {}));
-var SetTraceNotification;
+let SetTraceNotification;
 (function (SetTraceNotification) {
     SetTraceNotification.type = new messages_1.NotificationType('$/setTrace');
 })(SetTraceNotification || (exports.SetTraceNotification = SetTraceNotification = {}));
-var LogTraceNotification;
+let LogTraceNotification;
 (function (LogTraceNotification) {
     LogTraceNotification.type = new messages_1.NotificationType('$/logTrace');
 })(LogTraceNotification || (exports.LogTraceNotification = LogTraceNotification = {}));
-var ConnectionErrors;
+let ConnectionErrors;
 (function (ConnectionErrors) {
     /**
      * The connection is closed.
@@ -206,7 +206,7 @@ class ConnectionError extends Error {
     }
 }
 exports.ConnectionError = ConnectionError;
-var ConnectionStrategy;
+let ConnectionStrategy;
 (function (ConnectionStrategy) {
     function is(value) {
         const candidate = value;
@@ -214,7 +214,7 @@ var ConnectionStrategy;
     }
     ConnectionStrategy.is = is;
 })(ConnectionStrategy || (exports.ConnectionStrategy = ConnectionStrategy = {}));
-var IdCancellationReceiverStrategy;
+let IdCancellationReceiverStrategy;
 (function (IdCancellationReceiverStrategy) {
     function is(value) {
         const candidate = value;
@@ -222,7 +222,7 @@ var IdCancellationReceiverStrategy;
     }
     IdCancellationReceiverStrategy.is = is;
 })(IdCancellationReceiverStrategy || (exports.IdCancellationReceiverStrategy = IdCancellationReceiverStrategy = {}));
-var RequestCancellationReceiverStrategy;
+let RequestCancellationReceiverStrategy;
 (function (RequestCancellationReceiverStrategy) {
     function is(value) {
         const candidate = value;
@@ -230,7 +230,7 @@ var RequestCancellationReceiverStrategy;
     }
     RequestCancellationReceiverStrategy.is = is;
 })(RequestCancellationReceiverStrategy || (exports.RequestCancellationReceiverStrategy = RequestCancellationReceiverStrategy = {}));
-var CancellationReceiverStrategy;
+let CancellationReceiverStrategy;
 (function (CancellationReceiverStrategy) {
     CancellationReceiverStrategy.Message = Object.freeze({
         createCancellationTokenSource(_) {
@@ -242,7 +242,7 @@ var CancellationReceiverStrategy;
     }
     CancellationReceiverStrategy.is = is;
 })(CancellationReceiverStrategy || (exports.CancellationReceiverStrategy = CancellationReceiverStrategy = {}));
-var CancellationSenderStrategy;
+let CancellationSenderStrategy;
 (function (CancellationSenderStrategy) {
     CancellationSenderStrategy.Message = Object.freeze({
         sendCancellation(conn, id) {
@@ -256,7 +256,7 @@ var CancellationSenderStrategy;
     }
     CancellationSenderStrategy.is = is;
 })(CancellationSenderStrategy || (exports.CancellationSenderStrategy = CancellationSenderStrategy = {}));
-var CancellationStrategy;
+let CancellationStrategy;
 (function (CancellationStrategy) {
     CancellationStrategy.Message = Object.freeze({
         receiver: CancellationReceiverStrategy.Message,
@@ -268,7 +268,7 @@ var CancellationStrategy;
     }
     CancellationStrategy.is = is;
 })(CancellationStrategy || (exports.CancellationStrategy = CancellationStrategy = {}));
-var MessageStrategy;
+let MessageStrategy;
 (function (MessageStrategy) {
     function is(value) {
         const candidate = value;
@@ -276,7 +276,7 @@ var MessageStrategy;
     }
     MessageStrategy.is = is;
 })(MessageStrategy || (exports.MessageStrategy = MessageStrategy = {}));
-var ConnectionOptions;
+let ConnectionOptions;
 (function (ConnectionOptions) {
     function is(value) {
         const candidate = value;
@@ -285,7 +285,7 @@ var ConnectionOptions;
     }
     ConnectionOptions.is = is;
 })(ConnectionOptions || (exports.ConnectionOptions = ConnectionOptions = {}));
-var ConnectionState;
+let ConnectionState;
 (function (ConnectionState) {
     ConnectionState[ConnectionState["New"] = 1] = "New";
     ConnectionState[ConnectionState["Listening"] = 2] = "Listening";
@@ -1119,7 +1119,7 @@ function createMessageConnection(messageReader, messageWriter, _logger, options)
             if (typeof cancellationStrategy.sender.enableCancellation === 'function') {
                 cancellationStrategy.sender.enableCancellation(requestMessage);
             }
-            // eslint-disable-next-line no-async-promise-executor
+             
             return new Promise(async (resolve, reject) => {
                 const resolveWithCleanup = (r) => {
                     resolve(r);

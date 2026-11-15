@@ -1,45 +1,36 @@
-'use client';
-
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
-import { useColorScheme } from 'react-native';
 import { useAuthStore } from '../hooks/useAuthStore';
-import { useDatabase } from '../hooks/useDatabase';
-import React, { useState } from 'react';
+
+const APP_VERSION = '1.0.0';
+
+const UPCOMING_FEATURES = [
+  { icon: '✅', label: 'Lista de tareas', description: 'Recordatorios para tu negocio' },
+  { icon: '☁️', label: 'Respaldo en Google Drive', description: 'Copia de seguridad en la nube' },
+  { icon: '📊', label: 'Reportes en Excel', description: 'Exporta tus ventas a una hoja de cálculo' },
+  { icon: '🔔', label: 'Notificaciones', description: 'Avisos de stock bajo y caducidad' },
+];
 
 export default function SettingsScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const { user, logout, updateUser } = useAuthStore();
-  const db = useDatabase();
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
 
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(false);
+  const initial = user?.name?.charAt(0).toUpperCase() || 'U';
 
   const handleLogout = () => {
     Alert.alert(
       'Cerrar sesión',
-      '¿Estás seguro de que quieres cerrar sesión?',
+      '¿Seguro que quieres cerrar sesión? Tus datos se quedan guardados en este dispositivo.',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Cerrar sesión', style: 'destructive', onPress: () => {
-          logout();
-          router.replace('/');
-        }},
-      ]
-    );
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Eliminar cuenta',
-      'Esta acción eliminará todos tus datos permanentemente. ¿Estás seguro?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: () => {
-          // In a real app, this would delete the user data
-          Alert.alert('Información', 'Función de eliminación de cuenta en desarrollo');
-        }},
+        {
+          text: 'Cerrar sesión',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            router.replace('/');
+          },
+        },
       ]
     );
   };
@@ -47,194 +38,102 @@ export default function SettingsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.title}>Ajustes</Text>
-            <Text style={styles.subtitle}>Configuración de la aplicación</Text>
-          </View>
-          <TouchableOpacity style={styles.avatarButton}>
-            <Text style={styles.avatarText}>{user?.name?.charAt(0).toUpperCase() || 'U'}</Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel="Regresar"
+          >
+            <Text style={styles.backButtonText}>‹</Text>
           </TouchableOpacity>
+          <Text style={styles.title}>Ajustes</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
-        {/* Profile Section */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Perfil</Text>
-          <View style={styles.profileRow}>
-            <View style={styles.avatarLarge}>
-              <Text style={styles.avatarLargeText}>{user?.name?.charAt(0).toUpperCase() || 'U'}</Text>
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{user?.name || 'Usuario'}</Text>
-              <Text style={styles.profileEmail}>{user?.email || 'email@example.com'}</Text>
-              <Text style={styles.profileBusiness}>
-                {user?.businessName ? `${user.businessName} • ${user.businessType}` : 'Sin negocio configurado'}
-              </Text>
-            </View>
+        <View style={styles.profileCard}>
+          <View style={styles.avatarLarge}>
+            <Text style={styles.avatarLargeText}>{initial}</Text>
           </View>
-          <TouchableOpacity style={styles.editProfileButton} onPress={() => router.push('/tour/confirmation')}>
+          <Text style={styles.profileName}>{user?.name || 'Usuario'}</Text>
+          <Text style={styles.profileEmail}>{user?.email || 'Sin correo'}</Text>
+          {user?.businessName ? (
+            <Text style={styles.profileBusiness}>
+              {user.businessName}
+              {user.businessType ? ` • ${user.businessType}` : ''}
+            </Text>
+          ) : (
+            <Text style={styles.profileBusiness}>Sin negocio configurado</Text>
+          )}
+          <TouchableOpacity
+            style={styles.editProfileButton}
+            onPress={() => router.push('/tour/confirmation')}
+          >
             <Text style={styles.editProfileButtonText}>Editar perfil</Text>
           </TouchableOpacity>
         </View>
 
-        {/* App Preferences */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Preferencias</Text>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Notificaciones</Text>
-              <Text style={styles.settingDesc}>Alertas de stock bajo y caducidad</Text>
-            </View>
-            <Switch
-              trackColor={{ false: '#E4E4E7', true: '#6366F1' }}
-              thumbColor={notificationsEnabled ? '#FFFFFF' : '#A1A1AA'}
-              value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-            />
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Preferencias</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Idioma</Text>
+            <Text style={styles.infoValue}>Español (México)</Text>
           </View>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Modo oscuro</Text>
-              <Text style={styles.settingDesc}>Tema oscuro para la aplicación</Text>
-            </View>
-            <Switch
-              trackColor={{ false: '#E4E4E7', true: '#6366F1' }}
-              thumbColor={darkModeEnabled ? '#FFFFFF' : '#A1A1AA'}
-              value={darkModeEnabled}
-              onValueChange={setDarkModeEnabled}
-            />
-          </View>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Moneda</Text>
-              <Text style={styles.settingDesc}>MXN - Peso Mexicano</Text>
-            </View>
-            <Text style={styles.settingValue}>MXN $</Text>
-          </View>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Idioma</Text>
-              <Text style={styles.settingDesc}>Español (México)</Text>
-            </View>
-            <Text style={styles.settingValue}>Español</Text>
+          <View style={styles.infoRowLast}>
+            <Text style={styles.infoLabel}>Moneda</Text>
+            <Text style={styles.infoValue}>MXN $</Text>
           </View>
         </View>
 
-        {/* Data Section */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Datos</Text>
-
-          <TouchableOpacity style={styles.dataButton} onPress={() => Alert.alert('Backup', 'Backup a Google Drive en desarrollo')}>
-            <View style={styles.dataButtonLeft}>
-              <Text style={styles.dataButtonIcon}>☁️</Text>
-              <View>
-                <Text style={styles.dataButtonLabel}>Backup en Google Drive</Text>
-                <Text style={styles.dataButtonDesc}>Respalda tu base de datos en la nube</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Próximamente</Text>
+          <Text style={styles.cardSubtitle}>
+            Estas funciones aún no están disponibles en esta versión.
+          </Text>
+          {UPCOMING_FEATURES.map((feature, index) => (
+            <View
+              key={feature.label}
+              style={[
+                styles.featureRow,
+                index === UPCOMING_FEATURES.length - 1 && styles.featureRowLast,
+              ]}
+            >
+              <Text style={styles.featureIcon}>{feature.icon}</Text>
+              <View style={styles.featureInfo}>
+                <Text style={styles.featureLabel}>{feature.label}</Text>
+                <Text style={styles.featureDescription}>{feature.description}</Text>
+              </View>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>Pronto</Text>
               </View>
             </View>
-            <Text style={styles.dataButtonChevron}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.dataButton} onPress={() => Alert.alert('Exportar', 'Exportar a Excel en desarrollo')}>
-            <View style={styles.dataButtonLeft}>
-              <Text style={styles.dataButtonIcon}>📊</Text>
-              <View>
-                <Text style={styles.dataButtonLabel}>Exportar datos</Text>
-                <Text style={styles.dataButtonDesc}>Generar reporte en Excel</Text>
-              </View>
-            </View>
-            <Text style={styles.dataButtonChevron}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.dataButton} onPress={() => Alert.alert('Limpiar', 'Limpiar datos en desarrollo')}>
-            <View style={styles.dataButtonLeft}>
-              <Text style={styles.dataButtonIcon}>🗑️</Text>
-              <View>
-                <Text style={styles.dataButtonLabel}>Limpiar datos locales</Text>
-                <Text style={styles.dataButtonDesc}>Elimina todos los datos del dispositivo</Text>
-              </View>
-            </View>
-            <Text style={styles.dataButtonChevron}>›</Text>
-          </TouchableOpacity>
+          ))}
         </View>
 
-        {/* About Section */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Acerca de</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Tus datos</Text>
+          <Text style={styles.cardSubtitle}>
+            Toda tu información se guarda únicamente en este dispositivo. Si desinstalas la
+            aplicación o borras sus datos, no se podrá recuperar.
+          </Text>
+        </View>
 
-          <View style={styles.aboutRow}>
-            <View style={styles.aboutInfo}>
-              <Text style={styles.aboutLabel}>Versión</Text>
-            </View>
-            <Text style={styles.aboutValue}>1.0.0</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Acerca de</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Versión</Text>
+            <Text style={styles.infoValue}>{APP_VERSION}</Text>
           </View>
-
-          <View style={styles.aboutRow}>
-            <View style={styles.aboutInfo}>
-              <Text style={styles.aboutLabel}>Desarrollado para</Text>
-            </View>
-            <Text style={styles.aboutValue}>Pequeños negocios en México</Text>
+          <View style={styles.infoRowLast}>
+            <Text style={styles.infoLabel}>Hecho para</Text>
+            <Text style={styles.infoValue}>Pequeños negocios en México</Text>
           </View>
-
-          <TouchableOpacity style={styles.aboutRow} onPress={() => Alert.alert('Términos', 'Términos y condiciones en desarrollo')}>
-            <View style={styles.aboutInfo}>
-              <Text style={styles.aboutLabel}>Términos y condiciones</Text>
-            </View>
-            <Text style={styles.aboutChevron}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.aboutRow} onPress={() => Alert.alert('Privacidad', 'Política de privacidad en desarrollo')}>
-            <View style={styles.aboutInfo}>
-              <Text style={styles.aboutLabel}>Política de privacidad</Text>
-            </View>
-            <Text style={styles.aboutChevron}>›</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Danger Zone */}
-        <View style={styles.sectionCardDanger}>
-          <Text style={styles.sectionTitleDanger}>Zona de peligro</Text>
-
-          <TouchableOpacity style={styles.dangerButton} onPress={handleLogout}>
-            <Text style={styles.dangerButtonIcon}>🚪</Text>
-            <Text style={styles.dangerButtonText}>Cerrar sesión</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.dangerButton} onPress={handleDeleteAccount}>
-            <Text style={styles.dangerButtonIcon}>🗑️</Text>
-            <Text style={styles.dangerButtonText}>Eliminar cuenta</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutIcon}>🚪</Text>
+          <Text style={styles.logoutText}>Cerrar sesión</Text>
+        </TouchableOpacity>
       </ScrollView>
-
-      {/* Bottom Tab Bar */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.replace('/home')}>
-          <Text style={styles.tabIcon}>🏠</Text>
-          <Text style={styles.tabLabel}>Inicio</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/movements')}>
-          <Text style={styles.tabIcon}>💰</Text>
-          <Text style={styles.tabLabel}>Movimientos</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/catalog')}>
-          <Text style={styles.tabIcon}>📦</Text>
-          <Text style={styles.tabLabel}>Catálogo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/tasks')}>
-          <Text style={styles.tabIcon}>✅</Text>
-          <Text style={styles.tabLabel}>Tareas</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/reports')}>
-          <Text style={styles.tabIcon}>📊</Text>
-          <Text style={styles.tabLabel}>Informes</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -250,256 +149,198 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 100,
+    paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 24,
+    paddingHorizontal: 8,
   },
-  headerLeft: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#18181B',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#27272A',
-    marginTop: 2,
-  },
-  avatarButton: {
+  backButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#6366F1',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  backButtonText: {
+    fontSize: 24,
+    fontWeight: '300',
+    color: '#27272A',
   },
-  sectionCard: {
+  headerSpacer: {
+    width: 44,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#18181B',
+    flex: 1,
+    textAlign: 'center',
+  },
+  profileCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#E4E4E7',
-  },
-  sectionCardDanger: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6366F1',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 16,
-  },
-  sectionTitleDanger: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#EF4444',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 16,
-  },
-  profileRow: {
-    flexDirection: 'row',
+    padding: 24,
     alignItems: 'center',
-    gap: 16,
     marginBottom: 16,
   },
   avatarLarge: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: '#6366F1',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
   },
   avatarLargeText: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  profileInfo: {
-    flex: 1,
-  },
   profileName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#18181B',
-    marginBottom: 2,
   },
   profileEmail: {
     fontSize: 14,
-    color: '#A1A1AA',
-    marginBottom: 2,
+    color: '#71717A',
+    marginTop: 2,
   },
   profileBusiness: {
-    fontSize: 13,
-    color: '#27272A',
+    fontSize: 14,
+    color: '#6366F1',
+    fontWeight: '500',
+    marginTop: 6,
+    textAlign: 'center',
   },
   editProfileButton: {
-    backgroundColor: '#F4F4F5',
-    borderRadius: 8,
+    marginTop: 16,
+    borderWidth: 2,
+    borderColor: '#6366F1',
+    borderRadius: 12,
+    paddingHorizontal: 20,
     paddingVertical: 10,
-    alignItems: 'center',
   },
   editProfileButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: '#6366F1',
   },
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F4F4F5',
-  },
-  settingInfo: {
-    flex: 1,
-  },
-  settingLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#18181B',
-    marginBottom: 2,
-  },
-  settingDesc: {
-    fontSize: 12,
-    color: '#A1A1AA',
-  },
-  settingValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#27272A',
-  },
-  dataButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F4F4F5',
-  },
-  dataButtonLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  dataButtonIcon: {
-    fontSize: 24,
-  },
-  dataButtonLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#18181B',
-    marginBottom: 2,
-  },
-  dataButtonDesc: {
-    fontSize: 12,
-    color: '#A1A1AA',
-  },
-  dataButtonChevron: {
-    fontSize: 20,
-    fontWeight: '300',
-    color: '#A1A1AA',
-  },
-  aboutRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F4F4F5',
-  },
-  aboutInfo: {
-    flex: 1,
-  },
-  aboutLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#18181B',
-  },
-  aboutValue: {
-    fontSize: 14,
-    color: '#27272A',
-  },
-  aboutChevron: {
-    fontSize: 20,
-    fontWeight: '300',
-    color: '#A1A1AA',
-  },
-  dangerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
+  card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    marginTop: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+    padding: 20,
+    marginBottom: 16,
   },
-  dangerButtonIcon: {
-    fontSize: 20,
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#18181B',
+    marginBottom: 8,
   },
-  dangerButtonText: {
+  cardSubtitle: {
+    fontSize: 13,
+    color: '#71717A',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F4F4F5',
+    gap: 12,
+  },
+  infoRowLast: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 10,
+    gap: 12,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#27272A',
+    fontWeight: '500',
+  },
+  infoValue: {
+    fontSize: 14,
+    color: '#71717A',
+    flexShrink: 1,
+    textAlign: 'right',
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F4F4F5',
+  },
+  featureRowLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 0,
+  },
+  featureIcon: {
+    fontSize: 22,
+  },
+  featureInfo: {
+    flex: 1,
+  },
+  featureLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#18181B',
+  },
+  featureDescription: {
+    fontSize: 12,
+    color: '#71717A',
+    marginTop: 2,
+  },
+  badge: {
+    backgroundColor: '#F0F0FF',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6366F1',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  logoutIcon: {
+    fontSize: 18,
+  },
+  logoutText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#EF4444',
-  },
-  tabBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E4E4E7',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    justifyContent: 'space-around',
-  },
-  tabItem: {
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  tabItemActive: {
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  tabIcon: {
-    fontSize: 22,
-  },
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#A1A1AA',
-  },
-  tabLabelActive: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6366F1',
   },
 });

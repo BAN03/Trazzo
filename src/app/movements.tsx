@@ -47,7 +47,7 @@ export default function MovementsScreen() {
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'sales' | 'expenses'>('sales');
-  const [sales, setSales] = useState<Array<{
+  const [sales, setSales] = useState<{
     id: string;
     date: string;
     total_amount: number;
@@ -55,15 +55,15 @@ export default function MovementsScreen() {
     payment_method: string;
     status: string;
     note?: string;
-  }>>([]);
-  const [expenses, setExpenses] = useState<Array<{
+  }[]>([]);
+  const [expenses, setExpenses] = useState<{
     id: string;
     date: string;
     amount: number;
     description: string;
     category: string;
     note?: string;
-  }>>([]);
+  }[]>([]);
   const [incomeStats, setIncomeStats] = useState({ total: 0, count: 0 });
   const [expenseStats, setExpenseStats] = useState({ total: 0, count: 0 });
   const [loading, setLoading] = useState(true);
@@ -283,6 +283,9 @@ export default function MovementsScreen() {
                   key={sale.id}
                   style={styles.listItem}
                   onPress={() => handleEditSale(sale.id)}
+                  onLongPress={() => handleDeleteSale(sale.id)}
+                  delayLongPress={400}
+                  accessibilityHint="Mantén presionado para eliminar la venta"
                 >
                   <View style={styles.listItemLeft}>
                     <Text style={styles.listItemDate}>{formatDateKeyDayMonth(sale.date)}</Text>
@@ -325,6 +328,9 @@ export default function MovementsScreen() {
                   key={expense.id}
                   style={styles.listItem}
                   onPress={() => handleEditExpense(expense.id)}
+                  onLongPress={() => handleDeleteExpense(expense.id)}
+                  delayLongPress={400}
+                  accessibilityHint="Mantén presionado para eliminar el gasto"
                 >
                   <View style={styles.listItemLeft}>
                     <Text style={styles.listItemDate}>

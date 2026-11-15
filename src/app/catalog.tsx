@@ -30,7 +30,7 @@ export default function CatalogScreen() {
 
   const [activeTab, setActiveTab] = useState<'products' | 'supplies'>('products');
   const [searchQuery, setSearchQuery] = useState('');
-  const [products, setProducts] = useState<Array<{
+  const [products, setProducts] = useState<{
     id: string;
     name: string;
     category: string;
@@ -42,7 +42,7 @@ export default function CatalogScreen() {
     expires: number;
     expiry_date?: string;
     type: 'product' | 'supply';
-  }>>([]);
+  }[]>([]);
   const [loading, setLoading] = useState(true);
   const [inventoryValue, setInventoryValue] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
@@ -79,7 +79,7 @@ export default function CatalogScreen() {
     } finally {
       setLoading(false);
     }
-  }, [userId, currentType, db.initialized]);
+  }, [userId, currentType, db]);
 
   useEffect(() => {
     loadData();

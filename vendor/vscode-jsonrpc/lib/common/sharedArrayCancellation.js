@@ -6,7 +6,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SharedArrayReceiverStrategy = exports.SharedArraySenderStrategy = void 0;
 const cancellation_1 = require("./cancellation");
-var CancellationState;
+let CancellationState;
 (function (CancellationState) {
     CancellationState.Continue = 0;
     CancellationState.Cancelled = 1;
