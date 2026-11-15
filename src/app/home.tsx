@@ -5,7 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import * as Localization from 'expo-localization';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
@@ -86,14 +86,16 @@ export default function HomeScreen() {
     const weekStart = formatDateForDB(getWeekBounds(currentMonth).start);
     const weekEnd = formatDateForDB(getWeekBounds(currentMonth).end);
 
+    const uid = userId as string;
+
     try {
       const [incomeStats, expenseStats, topProds, weekly, lowStock, expiring] = await Promise.all([
-        Promise.resolve(db.getSalesStats(userId, monthStart, monthEnd)),
-        Promise.resolve(db.getExpensesStats(userId, monthStart, monthEnd)),
-        Promise.resolve(db.getTopProducts(userId, monthStart, monthEnd, 4)),
-        Promise.resolve(db.getWeeklySalesData(userId, weekStart, weekEnd)),
-        Promise.resolve(db.getLowStockProducts(userId)),
-        Promise.resolve(db.getExpiringProducts(userId, 7)),
+        Promise.resolve(db.getSalesStats(uid, monthStart, monthEnd)),
+        Promise.resolve(db.getExpensesStats(uid, monthStart, monthEnd)),
+        Promise.resolve(db.getTopProducts(uid, monthStart, monthEnd, 4)),
+        Promise.resolve(db.getWeeklySalesData(uid, weekStart, weekEnd)),
+        Promise.resolve(db.getLowStockProducts(uid)),
+        Promise.resolve(db.getExpiringProducts(uid, 7)),
       ]);
 
       setIncome({ total: incomeStats.total_amount, count: incomeStats.total_sales });

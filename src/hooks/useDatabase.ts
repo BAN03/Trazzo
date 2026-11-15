@@ -56,7 +56,7 @@ export function useDatabase() {
     if (fields.length === 0) return;
 
     const setClause = fields.map(f => `${f} = ?`).join(', ');
-    const values = fields.map(f => data[f as keyof User]);
+    const values = fields.map(f => data[f as keyof User] ?? null);
     values.push(getCurrentDateTime(), id);
 
     db.runSync(
@@ -116,7 +116,7 @@ export function useDatabase() {
     const values = fields.map(f => {
       const val = data[f as keyof Product];
       if (f === 'expires') return val ? 1 : 0;
-      return val;
+      return val ?? null;
     });
     values.push(getCurrentDateTime(), id);
 
@@ -247,7 +247,7 @@ export function useDatabase() {
     if (fields.length === 0) return;
 
     const setClause = fields.map(f => `${f} = ?`).join(', ');
-    const values = fields.map(f => data[f as keyof Sale]);
+    const values = fields.map(f => data[f as keyof Sale] ?? null);
     values.push(getCurrentDateTime(), id);
 
     db.runSync(
@@ -388,7 +388,7 @@ export function useDatabase() {
     if (fields.length === 0) return;
 
     const setClause = fields.map(f => `${f} = ?`).join(', ');
-    const values = fields.map(f => data[f as keyof Expense]);
+    const values = fields.map(f => data[f as keyof Expense] ?? null);
     values.push(getCurrentDateTime(), id);
 
     db.runSync(
@@ -450,7 +450,7 @@ export function useDatabase() {
     const values = fields.map(f => {
       const val = data[f as keyof Task];
       if (f === 'completed') return val ? 1 : 0;
-      return val;
+      return val ?? null;
     });
     values.push(getCurrentDateTime(), id);
 

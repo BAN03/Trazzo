@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useColorScheme } from 'react-native';
@@ -12,22 +13,28 @@ WebBrowser.maybeCompleteAuthSession();
 const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
 const GOOGLE_REDIRECT_URI = AuthSession.makeRedirectUri({ scheme: 'trazzo' });
 
+const discovery = AuthSession.useAutoDiscovery('https://accounts.google.com');
+
 export default function LoginScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { loginWithGoogle } = useAuthStore();
   const [loading, setLoading] = React.useState(false);
 
-  const [request, response, promptAsync] = AuthSession.useAuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
-    redirectUri: GOOGLE_REDIRECT_URI,
-    scopes: ['openid', 'profile', 'email'],
-    responseType: 'id_token',
-  });
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: GOOGLE_CLIENT_ID,
+      redirectUri: GOOGLE_REDIRECT_URI,
+      scopes: ['openid', 'profile', 'email'],
+      responseType: 'id_token',
+    },
+    discovery
+  );
 
   React.useEffect(() => {
     if (response?.type === 'success') {
-      handleGoogleResponse(response.params.id_token);
+      const idToken = response.params['id_token'];
+      if (idToken) handleGoogleResponse(idToken);
     } else if (response?.type === 'error') {
       Alert.alert('Error', 'No se pudo iniciar sesión con Google');
       setLoading(false);

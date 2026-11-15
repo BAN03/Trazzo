@@ -80,7 +80,7 @@ export interface Task {
 }
 
 export const initDatabase = () => {
-  db.exec(`
+  db.execSync(`
     PRAGMA foreign_keys = ON;
 
     CREATE TABLE IF NOT EXISTS users (

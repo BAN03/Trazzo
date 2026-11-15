@@ -1,9 +1,7 @@
 /** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./src/**/*.{js,jsx,ts,tsx}",
-    "./app/**/*.{js,jsx,ts,tsx}",
-  ],
+module.exports = {
+  presets: [require('nativewind/preset')],
+  content: ['./src/**/*.{js,jsx,ts,tsx}'],
   theme: {
     extend: {
       colors: {
@@ -17,15 +15,12 @@ export default {
         // Acento Violeta Eléctrico (10%)
         'violet-electric': '#6366F1',
         // Semantic colors
-        'success': '#10B981',
-        'error': '#EF4444',
-        'warning': '#F59E0B',
-        'info': '#3B82F6',
-      },
-      fontFamily: {
-        sans: ['System'],
+        success: '#10B981',
+        error: '#EF4444',
+        warning: '#F59E0B',
+        info: '#3B82F6',
       },
     },
   },
   plugins: [],
-}
+};
