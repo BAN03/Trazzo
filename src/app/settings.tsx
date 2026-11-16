@@ -6,6 +6,7 @@ import { getBusinessTypeLabel } from '../utils/business';
 const APP_VERSION = '1.0.0';
 
 const UPCOMING_FEATURES = [
+  { icon: '👥', label: 'Registro de empleados', description: 'Administra a tu equipo de trabajo' },
   { icon: '✅', label: 'Lista de tareas', description: 'Recordatorios para tu negocio' },
   { icon: '☁️', label: 'Respaldo en Google Drive', description: 'Copia de seguridad en la nube' },
   { icon: '📊', label: 'Reportes en Excel', description: 'Exporta tus ventas a una hoja de cálculo' },
