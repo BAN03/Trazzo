@@ -49,13 +49,26 @@ eas build --profile development --platform android
 
 ### Variables de entorno
 
-Crea un archivo `.env` en la raíz con tu Client ID de Google si quieres habilitar el inicio de sesión con Google:
+El proyecto incluye una plantilla `.env.example`. Copia la plantilla y coloca tus valores reales:
+
+```bash
+cp .env.example .env
+```
 
 ```dotenv
 EXPO_PUBLIC_GOOGLE_CLIENT_ID=tu-client-id.apps.googleusercontent.com
 ```
 
-Sin esa variable la app funciona en **modo local**: los datos se guardan en el dispositivo y puedes empezar a usarla sin cuenta.
+- `.env` está en `.gitignore`, así que tus credenciales locales no se suben al repositorio.
+- Si dejas la variable vacía, la app funciona en **modo local**: los datos se guardan en el dispositivo y puedes empezar a usarla sin cuenta.
+- Las variables con prefijo `EXPO_PUBLIC_` se incluyen en texto plano dentro del paquete de la app. El Client ID de OAuth para apps móviles no es un secreto, pero **nunca** guardes aquí el Client Secret ni claves privadas.
+- Para compilar con EAS sin subir tu `.env`, define la variable como secreto de entorno:
+
+```bash
+npx eas-cli env:create --name EXPO_PUBLIC_GOOGLE_CLIENT_ID --value "tu-client-id.apps.googleusercontent.com" --environment production
+```
+
+Nunca compartas el archivo `.env` ni lo agregues con `git add -f`.
 
 ## Scripts
 

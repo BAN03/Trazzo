@@ -30,7 +30,11 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env
+.env.local
+.env.*.local
+# La plantilla sí se comparte para documentar las variables requeridas
+!.env.example
 
 # typescript
 *.tsbuildinfo
