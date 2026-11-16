@@ -173,32 +173,30 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.card}>
-          <View style={styles.cardRow}>
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardLabel}>Ingresos este mes</Text>
-              <Text style={styles.cardValueIncome}>{currencyFormatter.format(income.total)}</Text>
-            </View>
-            <View style={styles.cardBadge}>
-              <Text style={styles.cardBadgeText}>
-                {income.count} {income.count === 1 ? 'venta' : 'ventas'}
-              </Text>
+        <View style={styles.cardRow}>
+          <View style={styles.card}>
+            <View style={styles.cardRow}>
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardLabel}>Ingresos</Text>
+                <Text style={styles.cardValueIncome}>{currencyFormatter.format(income.total)}</Text>
+                <Text style={styles.cardBadgeText}>
+                  {income.count} {income.count === 1 ? 'venta' : 'ventas'}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        <View style={styles.card}>
-          <View style={styles.cardRow}>
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardLabel}>Egresos este mes</Text>
-              <Text style={styles.cardValueExpense}>
-                {currencyFormatter.format(expenses.total)}
-              </Text>
-            </View>
-            <View style={styles.cardBadge}>
-              <Text style={styles.cardBadgeText}>
-                {expenses.count} {expenses.count === 1 ? 'registro' : 'registros'}
-              </Text>
+          <View style={styles.card}>
+            <View style={styles.cardRow}>
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardLabel}>Egresos</Text>
+                <Text style={styles.cardValueExpense}>
+                  {currencyFormatter.format(expenses.total)}
+                </Text>
+                <Text style={styles.cardBadgeText}>
+                  {expenses.count} {expenses.count === 1 ? 'registro' : 'registros'}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -484,6 +482,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
