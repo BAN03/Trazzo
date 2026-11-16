@@ -60,6 +60,46 @@ export const signInWithGoogle = async (): Promise<GoogleSignInResult | null> => 
   };
 };
 
+export interface GoogleErrorInfo {
+  code: string | null;
+  message: string;
+}
+
+export const getGoogleErrorInfo = (error: unknown): GoogleErrorInfo => ({
+  code: getErrorCode(error),
+  message: error instanceof Error ? error.message : String(error),
+});
+
+/**
+ * Traduce los errores más comunes de Google a una explicación útil.
+ * El código numérico se conserva para poder diagnosticar la configuración.
+ */
+export const describeGoogleError = (error: unknown): string => {
+  const code = getErrorCode(error);
+
+  switch (code) {
+    case '10':
+    case 'DEVELOPER_ERROR':
+      return 'La configuración de Google no coincide con la app. Revisa que el paquete sea com.trazzo.app, que el SHA-1 registrado sea el de esta instalación y que EXPO_PUBLIC_GOOGLE_CLIENT_ID sea un Client ID de tipo Web del mismo proyecto de Google Cloud.';
+    case '7':
+    case 'NETWORK_ERROR':
+      return 'No hay conexión a internet. Revisa tu red e inténtalo de nuevo.';
+    case '12500':
+    case 'SIGN_IN_FAILED':
+      return 'Google rechazó el inicio de sesión. Revisa que la pantalla de consentimiento esté configurada y que tu cuenta aparezca como usuario de prueba si la app está en modo de prueba.';
+    case '12501':
+    case 'SIGN_IN_CANCELLED':
+      return 'Cancelaste el inicio de sesión.';
+    case '12502':
+    case 'SIGN_IN_CURRENTLY_IN_PROGRESS':
+      return 'Ya hay un inicio de sesión en curso. Espera un momento.';
+    case 'NULL_PRESENTER':
+      return 'No se pudo abrir la ventana de Google. Cierra la app, vuelve a abrirla e inténtalo de nuevo.';
+    default:
+      return 'Ocurrió un error al comunicarse con Google.';
+  }
+};
+
 export const isGoogleSignInCancelled = (error: unknown): boolean =>
   getErrorCode(error) === statusCodes.SIGN_IN_CANCELLED;
 

@@ -32,6 +32,12 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasHydrated, user?.id, user?.onboardingCompleted]);
 
+  const showAlert = (title: string, message: string) => {
+    // En Android, al volver de la hoja de Google la Activity puede tardar
+    // un instante en estar disponible para mostrar el Alert.
+    setTimeout(() => Alert.alert(title, message), 300);
+  };
+
   const handleGoogle = async () => {
     if (!IS_GOOGLE_CONFIGURED) {
       Alert.alert(
@@ -64,10 +70,20 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         return;
       }
 
-      const finish = isLogin
-        ? loginWithGoogle(result.idToken, result.profile)
-        : registerWithGoogle(result.idToken, result.profile);
-      await finish;
+      try {
+        const finish = isLogin
+          ? loginWithGoogle(result.idToken, result.profile)
+          : registerWithGoogle(result.idToken, result.profile);
+        await finish;
+      } catch (saveError) {
+        console.error('[Google Sign-In] Error al guardar la sesión', saveError);
+        showAlert(
+          'No se pudieron guardar tus datos',
+          'La cuenta de Google se verificó, pero hubo un error al guardar la sesión en este dispositivo.'
+        );
+        return;
+      }
+
       goToNextStep();
     } catch (error) {
       if (googleAuth?.isGoogleSignInCancelled(error)) {
@@ -75,7 +91,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
       }
 
       if (googleAuth?.isPlayServicesUnavailable(error)) {
-        Alert.alert(
+        showAlert(
           'Google Play no disponible',
           'Actualiza Google Play Services en este dispositivo e inténtalo de nuevo.'
         );
@@ -83,19 +99,27 @@ export function AuthScreen({ mode }: AuthScreenProps) {
       }
 
       if (googleAuth?.isGoogleSignInInProgress(error)) {
-        Alert.alert('Espera un momento', 'Ya hay un inicio de sesión de Google en curso.');
+        showAlert('Espera un momento', 'Ya hay un inicio de sesión de Google en curso.');
         return;
       }
 
       if (!googleAuth || googleAuth.isNativeModuleMissing(error)) {
-        Alert.alert(
+        showAlert(
           'Requiere una compilación de desarrollo',
           'El inicio de sesión con Google no funciona en Expo Go. Compila la app con "npx expo run:android" o con un development build de EAS. También puedes continuar en modo local.'
         );
         return;
       }
 
-      Alert.alert('Error', 'No se pudo completar el inicio de sesión con Google.');
+      console.error('[Google Sign-In] Error', error);
+      const info = googleAuth.getGoogleErrorInfo(error);
+      const detail = googleAuth.describeGoogleError(error);
+      const rawMessage = info.message ? `\n\n${info.message.slice(0, 300)}` : '';
+
+      showAlert(
+        'No se pudo iniciar sesión con Google',
+        `${detail}\n\nCódigo: ${info.code ?? 'desconocido'}${rawMessage}`
+      );
     } finally {
       setLoading(false);
     }
