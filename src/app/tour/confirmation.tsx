@@ -3,26 +3,12 @@
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../../hooks/useAuthStore';
+import { getBusinessType } from '../../utils/business';
 import React from 'react';
-
-const categoryLabels: Record<string, string> = {
-  alimentos: 'Alimentos',
-  abarrotes: 'Abarrotes',
-  ropa: 'Ropa',
-  catalogo: 'Venta por catálogo',
-  otro: 'Otro',
-};
-
-const categoryIcons: Record<string, string> = {
-  alimentos: '🍔',
-  abarrotes: '🛒',
-  ropa: '👕',
-  catalogo: '📋',
-  otro: '📦',
-};
 
 export default function TourConfirmationScreen() {
   const { user, completeOnboarding } = useAuthStore();
+  const businessType = getBusinessType(user?.businessType);
 
   const getInitial = (name: string) => {
     return name.trim().charAt(0).toUpperCase();
@@ -97,9 +83,7 @@ export default function TourConfirmationScreen() {
           <View style={styles.fieldInfo}>
             <Text style={styles.fieldLabel}>Giro</Text>
             <Text style={styles.fieldValue}>
-              {user?.businessType
-                ? `${categoryIcons[user.businessType]} ${categoryLabels[user.businessType]}`
-                : 'No establecido'}
+              {businessType ? `${businessType.icon} ${businessType.label}` : 'No establecido'}
             </Text>
           </View>
           <TouchableOpacity style={styles.editButton} onPress={handleEditCategory}>

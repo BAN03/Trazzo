@@ -17,6 +17,7 @@ import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
 import { BottomTabBar } from '../components/BottomTabBar';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { formatQuantity, sanitizeDecimal } from '../utils/numbers';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -62,17 +63,21 @@ export default function CatalogScreen() {
 
     setLoading(true);
     try {
-      const data = db.getProducts(userId, currentType);
-      setProducts(data);
+      const all = db.getProducts(userId);
+      setProducts(all.filter((item) => item.type === currentType));
 
-      // Los productos se valúan a precio de venta; los insumos a costo.
-      const value = data.reduce(
-        (sum, p) => sum + (currentType === 'product' ? p.sale_price : p.cost_price) * p.stock,
-        0
-      );
-      setInventoryValue(value);
+      // Valor total del inventario: productos a precio de venta e insumos a costo.
+      const productValue = all
+        .filter((item) => item.type === 'product')
+        .reduce((sum, item) => sum + item.sale_price * item.stock, 0);
+      const supplyValue = all
+        .filter((item) => item.type === 'supply')
+        .reduce((sum, item) => sum + item.cost_price * item.stock, 0);
+      setInventoryValue(productValue + supplyValue);
 
-      const low = data.filter(p => p.stock <= p.min_stock && p.min_stock > 0).length;
+      const low = all.filter(
+        (item) => item.stock <= item.min_stock && item.min_stock > 0
+      ).length;
       setLowStockCount(low);
     } catch (error) {
       console.error('Error loading catalog:', error);
@@ -107,7 +112,7 @@ export default function CatalogScreen() {
 
   const confirmPurchase = () => {
     if (!purchaseTarget) return;
-    const clean = purchaseQuantity.replace(/[^0-9]/g, '');
+    const clean = sanitizeDecimal(purchaseQuantity);
     const quantity = Number(clean);
 
     if (!clean || !Number.isFinite(quantity) || quantity <= 0) {
@@ -121,15 +126,35 @@ export default function CatalogScreen() {
   };
 
   const handleDeleteProduct = (productId: string, productName: string) => {
+    if (db.productHasSales(productId)) {
+      Alert.alert(
+        'No se puede eliminar',
+        `"${productName}" tiene ventas registradas y borrarlo alteraría tu historial. Puedes editarlo y dejar su stock en 0.`
+      );
+      return;
+    }
+
     Alert.alert(
       'Eliminar producto',
       `¿Estás seguro de que quieres eliminar "${productName}"?`,
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: () => {
-          db.deleteProduct(productId);
-          loadData();
-        }},
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => {
+            try {
+              db.deleteProduct(productId);
+              loadData();
+            } catch (error) {
+              console.error('Error al eliminar el producto:', error);
+              Alert.alert(
+                'No se pudo eliminar',
+                'El artículo tiene información relacionada. Intenta de nuevo.'
+              );
+            }
+          },
+        },
       ]
     );
   };
@@ -255,7 +280,7 @@ export default function CatalogScreen() {
                       styles.listItemStock,
                       product.stock <= product.min_stock && product.min_stock > 0 && styles.listItemStockLow,
                     ]}>
-                      Stock: {product.stock} {product.unit}
+                      Stock: {formatQuantity(product.stock)} {product.unit}
                     </Text>
                   </View>
                 </View>
@@ -299,14 +324,15 @@ export default function CatalogScreen() {
               style={styles.modalInput}
               value={purchaseQuantity}
               onChangeText={(value) => {
-                setPurchaseQuantity(value);
+                setPurchaseQuantity(sanitizeDecimal(value));
                 if (purchaseError) setPurchaseError('');
               }}
-              keyboardType="number-pad"
+              keyboardType="decimal-pad"
               placeholder="1"
               placeholderTextColor="#A1A1AA"
               autoFocus
               selectTextOnFocus
+              maxLength={12}
             />
             {purchaseError ? <Text style={styles.modalError}>{purchaseError}</Text> : null}
             <View style={styles.modalActions}>

@@ -1,6 +1,7 @@
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
+import { getBusinessTypeLabel } from '../utils/business';
 
 const APP_VERSION = '1.0.0';
 
@@ -59,7 +60,7 @@ export default function SettingsScreen() {
           {user?.businessName ? (
             <Text style={styles.profileBusiness}>
               {user.businessName}
-              {user.businessType ? ` • ${user.businessType}` : ''}
+              {user.businessType ? ` • ${getBusinessTypeLabel(user.businessType)}` : ''}
             </Text>
           ) : (
             <Text style={styles.profileBusiness}>Sin negocio configurado</Text>

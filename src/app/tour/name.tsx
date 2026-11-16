@@ -13,10 +13,10 @@ export default function TourNameScreen() {
   const [error, setError] = React.useState('');
 
   const validateName = (value: string): boolean => {
-    // No permitir números ni caracteres especiales, solo letras y espacios
-    const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+    // Solo letras, espacios y signos que forman parte de un nombre (Ana-María, O'Brien)
+    const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'.-]+$/;
     if (!regex.test(value)) {
-      setError('El nombre solo puede contener letras y espacios');
+      setError('El nombre solo puede contener letras, espacios, guiones y apóstrofes');
       return false;
     }
     if (value.trim().length < 2) {

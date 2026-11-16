@@ -3,15 +3,8 @@
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../hooks/useAuthStore';
+import { BUSINESS_TYPES } from '../../utils/business';
 import React from 'react';
-
-const categories = [
-  { id: 'alimentos', label: 'Alimentos', icon: '🍔' },
-  { id: 'abarrotes', label: 'Abarrotes', icon: '🛒' },
-  { id: 'ropa', label: 'Ropa', icon: '👕' },
-  { id: 'catalogo', label: 'Venta por catálogo', icon: '📋' },
-  { id: 'otro', label: 'Otro', icon: '📦' },
-];
 
 export default function TourCategoryScreen() {
   const { updateUser, user } = useAuthStore();
@@ -43,7 +36,7 @@ export default function TourCategoryScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.categoriesContainer}>
-        {categories.map((category) => (
+        {BUSINESS_TYPES.map((category) => (
           <TouchableOpacity
             key={category.id}
             style={[

@@ -13,6 +13,7 @@ import {
   formatMonthLabel,
   getMonthBounds,
 } from '../utils/date';
+import { formatQuantity } from '../utils/numbers';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -320,7 +321,7 @@ export default function MovementsScreen() {
                       {currencyFormatter.format(sale.total_amount)}
                     </Text>
                     <Text style={styles.listItemCount}>
-                      {sale.total_items} art.
+                      {formatQuantity(sale.total_items)} art.
                     </Text>
                     <View style={styles.editChip}>
                       <Text style={styles.editChipText}>✎ Editar</Text>

@@ -12,6 +12,7 @@ import {
   parseDateKey,
   toDateKey,
 } from '../utils/date';
+import { formatQuantity } from '../utils/numbers';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -332,7 +333,9 @@ export default function ReportsScreen() {
                       ]}
                     />
                   </View>
-                  <Text style={styles.rankMeta}>{product.total_quantity} vendidos</Text>
+                  <Text style={styles.rankMeta}>
+                    {formatQuantity(product.total_quantity)} vendidos
+                  </Text>
                 </View>
               ))}
             </View>

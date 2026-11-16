@@ -1,5 +1,12 @@
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 
@@ -24,6 +31,7 @@ export default function PrimerArranque() {
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
+        <Image source={require('../../assets/icon.png')} style={styles.logo} />
         <Text style={styles.appName}>Trazzo</Text>
         <Text style={styles.appSubtitle}>Tu negocio, bajo control</Text>
       </View>
@@ -56,8 +64,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 48,
   },
+  logo: {
+    width: 96,
+    height: 96,
+    borderRadius: 24,
+    marginBottom: 20,
+  },
   appName: {
-    fontSize: 48,
+    fontSize: 44,
     fontWeight: '800',
     color: '#18181B',
     letterSpacing: -1,

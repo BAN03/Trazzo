@@ -14,6 +14,7 @@ import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
 import { DatePickerModal } from './DatePickerModal';
 import { addDays, formatDateKeyLong, toDateKey, todayKey } from '../utils/date';
+import { sanitizeDecimal } from '../utils/numbers';
 
 const EXPENSE_CATEGORIES = [
   { value: 'renta', label: 'Renta', icon: '🏠' },
@@ -24,14 +25,6 @@ const EXPENSE_CATEGORIES = [
 ] as const;
 
 type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]['value'];
-
-const sanitizeDecimal = (value: string): string => {
-  const cleaned = value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-  const [integerPart, ...rest] = cleaned.split('.');
-  if (rest.length === 0) return integerPart.slice(0, 9);
-  const decimals = rest.join('').slice(0, 2);
-  return `${integerPart.slice(0, 9)}.${decimals}`;
-};
 
 const makeKey = () => `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
@@ -264,7 +257,11 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
             <Text style={styles.dateButtonText}>{formatDateKeyLong(date)}</Text>
             <Text style={styles.dateButtonIcon}>📅</Text>
           </TouchableOpacity>
-          {errors.date ? <Text style={styles.errorText}>{errors.date}</Text> : null}
+          {errors.date ? (
+            <Text style={styles.errorText}>{errors.date}</Text>
+          ) : (
+            <Text style={styles.dateHint}>Puedes registrar gastos de hasta 90 días atrás.</Text>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -465,6 +462,12 @@ const styles = StyleSheet.create({
   },
   dateButtonIcon: {
     fontSize: 20,
+  },
+  dateHint: {
+    fontSize: 12,
+    color: '#71717A',
+    marginTop: 8,
+    marginLeft: 4,
   },
   primaryButton: {
     backgroundColor: '#6366F1',

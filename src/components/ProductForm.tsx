@@ -15,27 +15,12 @@ import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
 import { DatePickerModal } from './DatePickerModal';
 import { formatDateKeyLong, todayKey } from '../utils/date';
+import { parseAmount, roundQuantity, sanitizeDecimal } from '../utils/numbers';
 
 const UNITS = ['pz', 'kg', 'g', 'L', 'ml', 'm', 'cm', 'unidad', 'paquete', 'caja'];
 
 const NAME_PATTERN = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,\-&/%'()#+*]+$/;
 const CATEGORY_PATTERN = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
-
-/** Quita todo lo que no sea dígito y deja un solo punto decimal con 2 decimales. */
-const sanitizeDecimal = (value: string): string => {
-  const cleaned = value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-  const [integerPart, ...rest] = cleaned.split('.');
-  if (rest.length === 0) return integerPart.slice(0, 9);
-  const decimals = rest.join('').slice(0, 2);
-  return `${integerPart.slice(0, 9)}.${decimals}`;
-};
-
-const sanitizeInteger = (value: string): string => value.replace(/[^0-9]/g, '').slice(0, 7);
-
-const parseAmount = (value: string): number => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : NaN;
-};
 
 const makeKey = () => `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
@@ -186,8 +171,8 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
         category: isSupply ? 'Insumo' : category.trim(),
         sale_price: isSupply ? 0 : parseAmount(salePrice),
         cost_price: parseAmount(costPrice),
-        stock: Math.round(parseAmount(stock)),
-        min_stock: Math.round(parseAmount(minStock)),
+        stock: roundQuantity(parseAmount(stock)),
+        min_stock: roundQuantity(parseAmount(minStock)),
         unit,
         expires: expires ? 1 : 0,
         expiry_date: expires && expiryDate ? expiryDate : undefined,
@@ -358,10 +343,10 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
               placeholder="0"
               value={stock}
               onChangeText={(value) => {
-                setStock(sanitizeInteger(value));
+                setStock(sanitizeDecimal(value));
                 clearError('stock');
               }}
-              keyboardType="number-pad"
+              keyboardType="decimal-pad"
               placeholderTextColor="#A1A1AA"
             />
             {errors.stock ? <Text style={styles.errorText}>{errors.stock}</Text> : null}
@@ -374,10 +359,10 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
               placeholder="0"
               value={minStock}
               onChangeText={(value) => {
-                setMinStock(sanitizeInteger(value));
+                setMinStock(sanitizeDecimal(value));
                 clearError('minStock');
               }}
-              keyboardType="number-pad"
+              keyboardType="decimal-pad"
               placeholderTextColor="#A1A1AA"
             />
             {errors.minStock ? <Text style={styles.errorText}>{errors.minStock}</Text> : null}

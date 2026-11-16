@@ -184,9 +184,18 @@ export function useDatabase() {
     db.runSync('DELETE FROM products WHERE id = ?', [id]);
   }, []);
 
+  /** Indica si el producto ya forma parte de alguna venta (no se puede borrar). */
+  const productHasSales = useCallback((id: string): boolean => {
+    const row = db.getFirstSync<{ total: number }>(
+      'SELECT COUNT(*) AS total FROM sale_items WHERE product_id = ?',
+      [id]
+    );
+    return (row?.total ?? 0) > 0;
+  }, []);
+
   const updateProductStock = useCallback((productId: string, quantityChange: number) => {
     db.runSync(
-      `UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ?`,
+      `UPDATE products SET stock = ROUND(stock + ?, 2), updated_at = ? WHERE id = ?`,
       [quantityChange, getCurrentDateTime(), productId]
     );
   }, []);
@@ -255,7 +264,7 @@ export function useDatabase() {
 
         // Update product stock
         db.runSync(
-          `UPDATE products SET stock = stock - ?, updated_at = ? WHERE id = ?`,
+          `UPDATE products SET stock = ROUND(stock - ?, 2), updated_at = ? WHERE id = ?`,
           [item.quantity, now, item.product_id]
         );
       }
@@ -332,7 +341,7 @@ export function useDatabase() {
     try {
       for (const item of items) {
         db.runSync(
-          `UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ?`,
+          `UPDATE products SET stock = ROUND(stock + ?, 2), updated_at = ? WHERE id = ?`,
           [item.quantity, now, item.product_id]
         );
       }
@@ -362,7 +371,7 @@ export function useDatabase() {
     try {
       for (const item of oldItems) {
         db.runSync(
-          `UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ?`,
+          `UPDATE products SET stock = ROUND(stock + ?, 2), updated_at = ? WHERE id = ?`,
           [item.quantity, now, item.product_id]
         );
       }
@@ -401,7 +410,7 @@ export function useDatabase() {
         );
 
         db.runSync(
-          `UPDATE products SET stock = stock - ?, updated_at = ? WHERE id = ?`,
+          `UPDATE products SET stock = ROUND(stock - ?, 2), updated_at = ? WHERE id = ?`,
           [item.quantity, now, item.product_id]
         );
       }
@@ -615,6 +624,7 @@ export function useDatabase() {
     getProduct,
     updateProduct,
     deleteProduct,
+    productHasSales,
     updateProductStock,
     getLowStockProducts,
     getExpiringProducts,
@@ -656,6 +666,7 @@ export function useDatabase() {
     getProduct,
     updateProduct,
     deleteProduct,
+    productHasSales,
     updateProductStock,
     getLowStockProducts,
     getExpiringProducts,

@@ -20,6 +20,7 @@ import {
   toDateKey,
   todayKey,
 } from '../utils/date';
+import { formatQuantity, roundQuantity, sanitizeDecimal } from '../utils/numbers';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -52,7 +53,6 @@ interface SaleFormProps {
 }
 
 const makeKey = () => `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-const digitsOnly = (value: string) => value.replace(/[^0-9]/g, '');
 
 export function SaleForm({ mode, saleId }: SaleFormProps) {
   const isEditing = mode === 'edit';
@@ -120,10 +120,15 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
   }, [products, searchQuery]);
 
   const totals = useMemo(() => {
-    const totalAmount = items.reduce((sum, item) => sum + item.total_price, 0);
-    const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+    const totalAmount = roundQuantity(items.reduce((sum, item) => sum + item.total_price, 0));
+    const totalItems = roundQuantity(items.reduce((sum, item) => sum + item.quantity, 0));
     return { totalAmount, totalItems };
   }, [items]);
+
+  const selectedProduct = useMemo(
+    () => products.find((product) => product.id === selectedProductId) ?? null,
+    [products, selectedProductId]
+  );
 
   useEffect(() => {
     if (!isEditing || !saleId || !db.initialized) return;
@@ -162,7 +167,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
   /** Stock disponible considerando lo que esta venta ya había descontado. */
   const availableStock = useCallback(
     (productId: string, currentStock: number) =>
-      currentStock + (isEditing ? originalQuantities[productId] ?? 0 : 0),
+      roundQuantity(currentStock + (isEditing ? originalQuantities[productId] ?? 0 : 0)),
     [isEditing, originalQuantities]
   );
 
@@ -180,8 +185,8 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
       return;
     }
 
-    const clean = digitsOnly(quantity);
-    const qty = Number(clean);
+    const clean = sanitizeDecimal(quantity);
+    const qty = roundQuantity(Number(clean));
     if (!clean || !Number.isFinite(qty) || qty <= 0) {
       setError('La cantidad debe ser un número mayor a 0');
       return;
@@ -198,7 +203,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
       .reduce((sum, item) => sum + item.quantity, 0);
     const maxStock = availableStock(product.id, product.stock);
 
-    if (alreadyAdded + qty > maxStock) {
+    if (roundQuantity(alreadyAdded + qty) > roundQuantity(maxStock)) {
       setError(
         `Stock insuficiente. Disponible: ${maxStock} ${product.unit}${
           alreadyAdded > 0 ? ` (ya agregaste ${alreadyAdded})` : ''
@@ -212,11 +217,11 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
       if (existingIndex >= 0) {
         const next = [...current];
         const existing = next[existingIndex];
-        const newQuantity = existing.quantity + qty;
+        const newQuantity = roundQuantity(existing.quantity + qty);
         next[existingIndex] = {
           ...existing,
           quantity: newQuantity,
-          total_price: newQuantity * existing.unit_price,
+          total_price: roundQuantity(newQuantity * existing.unit_price),
         };
         return next;
       }
@@ -228,7 +233,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
           product_name: product.name,
           quantity: qty,
           unit_price: product.sale_price,
-          total_price: product.sale_price * qty,
+          total_price: roundQuantity(product.sale_price * qty),
           cost_price: product.cost_price,
         },
       ];
@@ -248,7 +253,8 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
     const item = items.find((i) => i.key === key);
     if (!item) return;
 
-    if (nextQuantity <= 0) {
+    const rounded = roundQuantity(nextQuantity);
+    if (rounded <= 0) {
       handleRemoveItem(key);
       return;
     }
@@ -261,7 +267,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
       .reduce((sum, i) => sum + i.quantity, 0);
     const maxStock = availableStock(product.id, product.stock);
 
-    if (others + nextQuantity > maxStock) {
+    if (roundQuantity(others + rounded) > roundQuantity(maxStock)) {
       setError(`Stock insuficiente. Disponible: ${maxStock} ${product.unit}`);
       return;
     }
@@ -269,7 +275,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
     setItems((current) =>
       current.map((i) =>
         i.key === key
-          ? { ...i, quantity: nextQuantity, total_price: i.unit_price * nextQuantity }
+          ? { ...i, quantity: rounded, total_price: roundQuantity(i.unit_price * rounded) }
           : i
       )
     );
@@ -389,6 +395,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
             <Text style={styles.dateButtonText}>{formatDateKeyLong(date)}</Text>
             <Text style={styles.dateButtonIcon}>📅</Text>
           </TouchableOpacity>
+          <Text style={styles.dateHint}>Puedes registrar ventas de hasta 90 días atrás.</Text>
         </View>
 
         <View style={styles.section}>
@@ -422,18 +429,34 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
             </View>
           )}
 
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar producto..."
-            value={searchQuery}
-            onChangeText={(value) => {
-              setSearchQuery(value);
-              setShowProductSearch(true);
-            }}
-            onFocus={() => setShowProductSearch(true)}
-            placeholderTextColor="#A1A1AA"
-            autoCorrect={false}
-          />
+          {products.length === 0 ? (
+            <View style={styles.emptyProducts}>
+              <Text style={styles.emptyProductsIcon}>📦</Text>
+              <Text style={styles.emptyProductsTitle}>Aún no tienes productos</Text>
+              <Text style={styles.emptyProductsText}>
+                Agrega productos a tu catálogo antes de registrar una venta.
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyProductsButton}
+                onPress={() => router.push('/catalog')}
+              >
+                <Text style={styles.emptyProductsButtonText}>Ir al catálogo</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar producto..."
+              value={searchQuery}
+              onChangeText={(value) => {
+                setSearchQuery(value);
+                setShowProductSearch(true);
+              }}
+              onFocus={() => setShowProductSearch(true)}
+              placeholderTextColor="#A1A1AA"
+              autoCorrect={false}
+            />
+          )}
 
           {showProductSearch && filteredProducts.length > 0 && (
             <View style={styles.searchResults}>
@@ -474,25 +497,33 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
 
           {selectedProductId && (
             <View style={styles.quantitySelector}>
-              <Text style={styles.quantityLabel}>Cantidad</Text>
+              <Text style={styles.quantityLabel}>
+                Cantidad{selectedProduct ? ` (${selectedProduct.unit})` : ''}
+              </Text>
               <View style={styles.quantityInputContainer}>
                 <TouchableOpacity
                   style={styles.quantityButton}
-                  onPress={() => setQuantity(String(Math.max(1, Number(digitsOnly(quantity) || 1) - 1)))}
+                  onPress={() =>
+                    setQuantity(
+                      formatQuantity(Math.max(0, Number(quantity || 0) - 1))
+                    )
+                  }
+                  accessibilityLabel="Disminuir cantidad"
                 >
                   <Text style={styles.quantityButtonText}>−</Text>
                 </TouchableOpacity>
                 <TextInput
                   style={styles.quantityInput}
                   value={quantity}
-                  onChangeText={(value) => setQuantity(digitsOnly(value).slice(0, 5))}
-                  keyboardType="number-pad"
+                  onChangeText={(value) => setQuantity(sanitizeDecimal(value))}
+                  keyboardType="decimal-pad"
                   textAlign="center"
-                  maxLength={5}
+                  maxLength={12}
                 />
                 <TouchableOpacity
                   style={styles.quantityButton}
-                  onPress={() => setQuantity(String(Number(digitsOnly(quantity) || 0) + 1))}
+                  onPress={() => setQuantity(formatQuantity(Number(quantity || 0) + 1))}
+                  accessibilityLabel="Aumentar cantidad"
                 >
                   <Text style={styles.quantityButtonText}>+</Text>
                 </TouchableOpacity>
@@ -515,7 +546,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
                   <View style={styles.itemInfo}>
                     <Text style={styles.itemName}>{item.product_name}</Text>
                     <Text style={styles.itemPrice}>
-                      {currencyFormatter.format(item.unit_price)} × {item.quantity}
+                      {currencyFormatter.format(item.unit_price)} × {formatQuantity(item.quantity)}
                     </Text>
                   </View>
                   <View style={styles.itemActions}>
@@ -585,7 +616,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
           </View>
           <View style={styles.totalRowLast}>
             <Text style={styles.totalLabel}>Artículos</Text>
-            <Text style={styles.totalItems}>{totals.totalItems}</Text>
+            <Text style={styles.totalItems}>{formatQuantity(totals.totalItems)}</Text>
           </View>
         </View>
 
@@ -712,6 +743,12 @@ const styles = StyleSheet.create({
   dateButtonIcon: {
     fontSize: 20,
   },
+  dateHint: {
+    fontSize: 12,
+    color: '#71717A',
+    marginTop: 8,
+    marginLeft: 4,
+  },
   topProductsContainer: {
     marginBottom: 16,
   },
@@ -820,6 +857,43 @@ const styles = StyleSheet.create({
     color: '#A1A1AA',
     textAlign: 'center',
     paddingVertical: 16,
+  },
+  emptyProducts: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+    borderRadius: 12,
+    padding: 20,
+    gap: 6,
+    marginBottom: 12,
+  },
+  emptyProductsIcon: {
+    fontSize: 34,
+  },
+  emptyProductsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#18181B',
+    textAlign: 'center',
+  },
+  emptyProductsText: {
+    fontSize: 13,
+    color: '#71717A',
+    textAlign: 'center',
+    lineHeight: 19,
+  },
+  emptyProductsButton: {
+    marginTop: 8,
+    backgroundColor: '#6366F1',
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  emptyProductsButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   quantitySelector: {
     backgroundColor: '#F0F0FF',

@@ -15,6 +15,7 @@ import {
   parseDateKey,
   todayKey,
 } from '../utils/date';
+import { formatQuantity } from '../utils/numbers';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -41,7 +42,9 @@ export default function HomeScreen() {
   const [weeklyData, setWeeklyData] = useState<
     { date: string; income: number; expense: number }[]
   >([]);
-  const [lowStockAlert, setLowStockAlert] = useState<{ name: string; stock: number }[]>([]);
+  const [lowStockAlert, setLowStockAlert] = useState<
+    { name: string; stock: number; unit: string }[]
+  >([]);
   const [expiringAlert, setExpiringAlert] = useState<
     { name: string; expiry_date: string }[]
   >([]);
@@ -73,7 +76,9 @@ export default function HomeScreen() {
       setAvgSale(incomeStats.avg_sale);
       setTopProducts(topProds);
       setWeeklyData(weekly);
-      setLowStockAlert(lowStock.map((p) => ({ name: p.name, stock: p.stock })));
+      setLowStockAlert(
+        lowStock.map((p) => ({ name: p.name, stock: p.stock, unit: p.unit }))
+      );
       setExpiringAlert(
         expiring.map((p) => ({ name: p.name, expiry_date: p.expiry_date || '' }))
       );
@@ -235,7 +240,7 @@ export default function HomeScreen() {
                   <View style={styles.topProductInfo}>
                     <Text style={styles.topProductName}>{product.product_name}</Text>
                     <Text style={styles.topProductMeta}>
-                      {product.total_quantity} vendidos •{' '}
+                      {formatQuantity(product.total_quantity)} vendidos •{' '}
                       {currencyFormatter.format(product.total_profit)} ganancia
                     </Text>
                   </View>
@@ -256,7 +261,7 @@ function AlertPopup({
   expiring,
   onClose,
 }: {
-  lowStock: { name: string; stock: number }[];
+  lowStock: { name: string; stock: number; unit: string }[];
   expiring: { name: string; expiry_date: string }[];
   onClose: () => void;
 }) {
@@ -277,7 +282,9 @@ function AlertPopup({
                 <Text style={styles.alertItemName} numberOfLines={1}>
                   {item.name}
                 </Text>
-                <Text style={styles.alertItemValue}>{item.stock} unidades</Text>
+                <Text style={styles.alertItemValue}>
+                  {formatQuantity(item.stock)} {item.unit}
+                </Text>
               </View>
             ))}
           </View>

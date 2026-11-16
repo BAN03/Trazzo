@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 
@@ -61,6 +61,7 @@ export default function WelcomeScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
+        <Image source={require('../../assets/icon.png')} style={styles.logo} />
         <Text style={styles.appName}>Trazzo</Text>
         <Text style={styles.welcomeTitle}>¡Bienvenido a Trazzo!</Text>
         <Text style={styles.welcomeSubtitle}>
@@ -102,6 +103,12 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 32,
+  },
+  logo: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
+    marginBottom: 12,
   },
   appName: {
     fontSize: 42,

@@ -13,10 +13,10 @@ export default function TourBusinessScreen() {
   const [error, setError] = React.useState('');
 
   const validateBusinessName = (value: string): boolean => {
-    // Permitir letras, números, espacios y algunos caracteres comunes para nombres de negocio
-    const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-\.\&]+$/;
+    // Permitir letras, números, espacios y signos comunes para nombres de negocio
+    const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s\-.,&'()/]+$/;
     if (!regex.test(value)) {
-      setError('El nombre solo puede contener letras, números, espacios, guiones, puntos y &');
+      setError('El nombre solo puede contener letras, números, espacios y signos como guiones o puntos');
       return false;
     }
     if (value.trim().length < 2) {
