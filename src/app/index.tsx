@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -11,13 +10,9 @@ import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 
 export default function PrimerArranque() {
-  const user = useAuthStore((state) => state.user);
+  // La redirección a Inicio o al onboarding la resuelve `Stack.Protected`
+  // en el layout raíz según el estado de la sesión.
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
-
-  useEffect(() => {
-    if (!hasHydrated || !user) return;
-    router.replace(user.onboardingCompleted ? '/home' : '/welcome');
-  }, [hasHydrated, user]);
 
   if (!hasHydrated) {
     return (
