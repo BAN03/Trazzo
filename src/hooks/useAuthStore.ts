@@ -20,12 +20,19 @@ export interface AuthUser {
   onboardingCompleted: boolean;
 }
 
+export interface GoogleProfile {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  photo?: string | null;
+}
+
 interface AuthState {
   user: AuthUser | null;
   isAuthenticated: boolean;
   hasHydrated: boolean;
-  loginWithGoogle: (idToken: string) => Promise<void>;
-  registerWithGoogle: (idToken: string) => Promise<void>;
+  loginWithGoogle: (idToken: string | null, profile?: GoogleProfile) => Promise<void>;
+  registerWithGoogle: (idToken: string | null, profile?: GoogleProfile) => Promise<void>;
   continueAsLocal: () => void;
   logout: () => void;
   completeOnboarding: (data: { name: string; businessName: string; businessType: string }) => void;
@@ -73,12 +80,22 @@ const decodeJwtPayload = (token: string): Record<string, unknown> | null => {
   }
 };
 
-const googleUserFromToken = (idToken: string, fallbackName: string): AuthUser => {
-  const payload = decodeJwtPayload(idToken);
-  const subject = typeof payload?.sub === 'string' ? payload.sub : '';
-  const email = typeof payload?.email === 'string' ? payload.email : '';
-  const name = typeof payload?.name === 'string' ? payload.name : '';
-  const picture = typeof payload?.picture === 'string' ? payload.picture : undefined;
+const googleUserFromToken = (
+  idToken: string | null,
+  fallbackName: string,
+  profile?: GoogleProfile
+): AuthUser => {
+  const payload = idToken ? decodeJwtPayload(idToken) : null;
+  const subject =
+    (typeof payload?.sub === 'string' && payload.sub) || profile?.id || '';
+  const email =
+    (typeof payload?.email === 'string' && payload.email) || profile?.email || '';
+  const name =
+    (typeof payload?.name === 'string' && payload.name) || profile?.name || '';
+  const picture =
+    (typeof payload?.picture === 'string' && payload.picture) ||
+    profile?.photo ||
+    undefined;
   const stableId = subject || email || `google_${Date.now()}`;
 
   return {
@@ -116,18 +133,21 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       hasHydrated: false,
 
-      loginWithGoogle: async (idToken: string) => {
+      loginWithGoogle: async (idToken, profile) => {
         const current = get().user;
         const user = signIn(
           current?.onboardingCompleted && current.id.startsWith('google_')
-            ? { ...googleUserFromToken(idToken, current.name), onboardingCompleted: true }
-            : googleUserFromToken(idToken, 'Usuario de Google')
+            ? {
+                ...googleUserFromToken(idToken, current.name, profile),
+                onboardingCompleted: true,
+              }
+            : googleUserFromToken(idToken, 'Usuario de Google', profile)
         );
         set({ user, isAuthenticated: true });
       },
 
-      registerWithGoogle: async (idToken: string) => {
-        const user = signIn(googleUserFromToken(idToken, 'Nuevo usuario'));
+      registerWithGoogle: async (idToken, profile) => {
+        const user = signIn(googleUserFromToken(idToken, 'Nuevo usuario', profile));
         set({ user, isAuthenticated: true });
       },
 

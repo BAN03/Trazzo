@@ -1,23 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
 import { useAuthStore } from '../hooks/useAuthStore';
-
-WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? '';
 const IS_GOOGLE_CONFIGURED =
   GOOGLE_CLIENT_ID.length > 0 && !GOOGLE_CLIENT_ID.startsWith('YOUR_GOOGLE');
-const REDIRECT_URI = AuthSession.makeRedirectUri({ scheme: 'trazzo' });
 
-// Endpoints fijos para no depender de una descarga de descubrimiento al abrir.
-const discovery: AuthSession.DiscoveryDocument = {
-  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-  tokenEndpoint: 'https://oauth2.googleapis.com/token',
-  revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
-};
+type GoogleAuthModule = typeof import('../utils/googleAuth');
 
 interface AuthScreenProps {
   mode: 'login' | 'register';
@@ -28,16 +18,6 @@ export function AuthScreen({ mode }: AuthScreenProps) {
   const { user, hasHydrated, loginWithGoogle, registerWithGoogle, continueAsLocal } =
     useAuthStore();
   const [loading, setLoading] = useState(false);
-
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: GOOGLE_CLIENT_ID || 'not-configured.apps.googleusercontent.com',
-      redirectUri: REDIRECT_URI,
-      scopes: ['openid', 'profile', 'email'],
-      responseType: AuthSession.ResponseType.IdToken,
-    },
-    discovery
-  );
 
   const goToNextStep = () => {
     const current = useAuthStore.getState().user;
@@ -51,29 +31,6 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     // Solo al montar o cuando cambia la sesión.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasHydrated, user?.id, user?.onboardingCompleted]);
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const idToken = response.params['id_token'];
-      if (!idToken) {
-        setLoading(false);
-        Alert.alert('Error', 'Google no devolvió la información de la cuenta.');
-        return;
-      }
-
-      const finish = isLogin ? loginWithGoogle(idToken) : registerWithGoogle(idToken);
-      finish
-        .then(goToNextStep)
-        .catch(() => Alert.alert('Error', 'No se pudo autenticar con Google.'))
-        .finally(() => setLoading(false));
-    } else if (response?.type === 'error') {
-      setLoading(false);
-      Alert.alert('Error', 'No se pudo completar el inicio de sesión con Google.');
-    } else if (response?.type === 'dismiss') {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [response]);
 
   const handleGoogle = async () => {
     if (!IS_GOOGLE_CONFIGURED) {
@@ -95,11 +52,52 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     }
 
     setLoading(true);
+    let googleAuth: GoogleAuthModule | null = null;
+
     try {
-      await promptAsync();
-    } catch {
+      // Se importa en tiempo de ejecución: el módulo nativo no existe en Expo Go.
+      googleAuth = await import('../utils/googleAuth');
+      const result = await googleAuth.signInWithGoogle();
+
+      if (!result) {
+        // El usuario cerró la hoja de Google.
+        return;
+      }
+
+      const finish = isLogin
+        ? loginWithGoogle(result.idToken, result.profile)
+        : registerWithGoogle(result.idToken, result.profile);
+      await finish;
+      goToNextStep();
+    } catch (error) {
+      if (googleAuth?.isGoogleSignInCancelled(error)) {
+        return;
+      }
+
+      if (googleAuth?.isPlayServicesUnavailable(error)) {
+        Alert.alert(
+          'Google Play no disponible',
+          'Actualiza Google Play Services en este dispositivo e inténtalo de nuevo.'
+        );
+        return;
+      }
+
+      if (googleAuth?.isGoogleSignInInProgress(error)) {
+        Alert.alert('Espera un momento', 'Ya hay un inicio de sesión de Google en curso.');
+        return;
+      }
+
+      if (!googleAuth || googleAuth.isNativeModuleMissing(error)) {
+        Alert.alert(
+          'Requiere una compilación de desarrollo',
+          'El inicio de sesión con Google no funciona en Expo Go. Compila la app con "npx expo run:android" o con un development build de EAS. También puedes continuar en modo local.'
+        );
+        return;
+      }
+
+      Alert.alert('Error', 'No se pudo completar el inicio de sesión con Google.');
+    } finally {
       setLoading(false);
-      Alert.alert('Error', 'No se pudo abrir la pantalla de Google.');
     }
   };
 
@@ -120,7 +118,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
       <TouchableOpacity
         style={[styles.googleButton, loading && styles.googleButtonDisabled]}
         onPress={handleGoogle}
-        disabled={loading || !request}
+        disabled={loading}
       >
         {loading ? (
           <ActivityIndicator color="#18181B" />

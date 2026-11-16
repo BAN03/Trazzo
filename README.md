@@ -56,7 +56,9 @@ cp .env.example .env
 ```
 
 ```dotenv
-EXPO_PUBLIC_GOOGLE_CLIENT_ID=tu-client-id.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_CLIENT_ID=tu-client-id-web.apps.googleusercontent.com
+# Opcional, solo para iOS:
+# EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=tu-client-id-ios.apps.googleusercontent.com
 ```
 
 - `.env` está en `.gitignore`, así que tus credenciales locales no se suben al repositorio.
@@ -65,10 +67,35 @@ EXPO_PUBLIC_GOOGLE_CLIENT_ID=tu-client-id.apps.googleusercontent.com
 - Para compilar con EAS sin subir tu `.env`, define la variable como secreto de entorno:
 
 ```bash
-npx eas-cli env:create --name EXPO_PUBLIC_GOOGLE_CLIENT_ID --value "tu-client-id.apps.googleusercontent.com" --environment production
+npx eas-cli env:create --name EXPO_PUBLIC_GOOGLE_CLIENT_ID --value "tu-client-id-web.apps.googleusercontent.com" --environment production
 ```
 
 Nunca compartas el archivo `.env` ni lo agregues con `git add -f`.
+
+### Inicio de sesión con Google
+
+Google Sign-In usa el módulo nativo `@react-native-google-signin/google-signin`. **No funciona en Expo Go**: necesitas un *development build* (`npx expo run:android` o `eas build --profile development`).
+
+En [Google Cloud Console](https://console.cloud.google.com/apis/credentials) crea:
+
+1. **Cliente OAuth de Android**
+   - Nombre del paquete: `com.trazzo.app`
+   - Huella SHA-1 del keystore con el que firmas la app. Para un build local de debug puedes obtenerla con:
+
+     ```bash
+     npx expo run:android
+     cd android
+     ./gradlew signingReport
+     ```
+
+     Para EAS consulta la huella con `npx eas-cli credentials` (Android > Keystore).
+2. **Cliente OAuth de Web**
+   - Su ID es el que va en `EXPO_PUBLIC_GOOGLE_CLIENT_ID`. Es obligatorio aunque la app sea Android, porque se usa para emitir el `idToken`.
+3. **Cliente OAuth de iOS** (solo si compilas para iOS)
+   - Coloca su ID en `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`.
+   - En `app.json`, reemplaza el valor de ejemplo de `iosUrlScheme` por el Client ID de iOS invertido: `com.googleusercontent.apps.<ID>` (sin `.apps.googleusercontent.com`).
+
+No se necesita `google-services.json` ni Firebase. Después de cambiar `app.json` o las credenciales nativas, vuelve a compilar el development build para que los cambios se apliquen.
 
 ## Scripts
 
