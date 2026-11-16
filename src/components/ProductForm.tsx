@@ -13,6 +13,7 @@ import {
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
+import { useTheme } from '../hooks/useTheme';
 import { DatePickerModal } from './DatePickerModal';
 import { formatDateKeyLong, todayKey } from '../utils/date';
 import { parseAmount, roundQuantity, sanitizeDecimal } from '../utils/numbers';
@@ -31,6 +32,7 @@ interface ProductFormProps {
 }
 
 export function ProductForm({ mode, kind, productId }: ProductFormProps) {
+  const theme = useTheme();
   const isEditing = mode === 'edit';
   const isSupply = kind === 'supply';
   const user = useAuthStore((state) => state.user);
@@ -226,7 +228,7 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}

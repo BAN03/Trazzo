@@ -3,13 +3,15 @@
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
+import { useTheme } from '../hooks/useTheme';
 import { BottomTabBar } from '../components/BottomTabBar';
 
 export default function TasksScreen() {
+  const theme = useTheme();
   const user = useAuthStore((state) => state.user);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>

@@ -1,0 +1,36 @@
+export const Colors = {
+  light: {
+    text: '#0F172A',
+    textSecondary: '#64748B',
+    background: '#F4F6F8',
+    card: '#FFFFFF',
+    backgroundElement: '#EEF2F6',
+    border: '#E2E8F0',
+    primary: '#6366F1',
+    primarySoft: '#E0E7FF',
+    onPrimary: '#FFFFFF',
+    success: '#15803D',
+    danger: '#DC2626',
+    warning: '#B45309',
+    warningSoft: '#FEF3C7',
+    overlay: 'rgba(15, 23, 42, 0.45)',
+  },
+  dark: {
+    text: '#F1F5F9',
+    textSecondary: '#94A3B8',
+    background: '#0B1220',
+    card: '#131C2B',
+    backgroundElement: '#1B2637',
+    border: '#243247',
+    primary: '#A5B4FC',
+    primarySoft: '#312E81',
+    onPrimary: '#1E1B4B',
+    success: '#4ADE80',
+    danger: '#F87171',
+    warning: '#FBBF24',
+    warningSoft: '#451A03',
+    overlay: 'rgba(2, 6, 23, 0.65)',
+  },
+} as const;
+
+export type Theme = (typeof Colors)[keyof typeof Colors];

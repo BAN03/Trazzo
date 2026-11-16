@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
+import { useTheme } from '../hooks/useTheme';
 import { BottomTabBar } from '../components/BottomTabBar';
 import {
   canGoToNextMonth,
@@ -31,6 +32,7 @@ const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slic
 export default function HomeScreen() {
   const user = useAuthStore((state) => state.user);
   const db = useDatabase();
+  const theme = useTheme();
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [income, setIncome] = useState({ total: 0, count: 0 });
@@ -48,12 +50,9 @@ export default function HomeScreen() {
   const [expiringAlert, setExpiringAlert] = useState<
     { name: string; expiry_date: string }[]
   >([]);
+  const [hasPreviousMonthSales, setHasPreviousMonthSales] = useState(false);
   const [showAlertPopup, setShowAlertPopup] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  // Evita que el pop up vuelva a abrirse en cada cambio de estado después de
-  // que el usuario lo cerró.
-  const alertsAcknowledged = useRef(false);
 
   const userId = user?.id;
   const monthBounds = useMemo(() => getMonthBounds(currentMonth), [currentMonth]);
@@ -70,6 +69,13 @@ export default function HomeScreen() {
       const weekly = db.getWeeklySalesData(userId, weekBounds.start, weekBounds.end);
       const lowStock = db.getLowStockProducts(userId);
       const expiring = db.getExpiringProducts(userId, 7);
+      const previousMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+      const previousMonthBounds = getMonthBounds(previousMonth);
+      const previousMonthSales = db.getSales(
+        userId,
+        previousMonthBounds.start,
+        previousMonthBounds.end
+      );
 
       setIncome({ total: incomeStats.total_amount, count: incomeStats.total_sales });
       setExpenses({ total: expenseStats.total_amount, count: expenseStats.total_expenses });
@@ -82,26 +88,29 @@ export default function HomeScreen() {
       setExpiringAlert(
         expiring.map((p) => ({ name: p.name, expiry_date: p.expiry_date || '' }))
       );
+      setHasPreviousMonthSales(previousMonthSales.length > 0);
     } catch (error) {
       console.error('Error al cargar el inicio:', error);
     } finally {
       setLoading(false);
     }
-  }, [userId, db, monthBounds.start, monthBounds.end, weekBounds.start, weekBounds.end]);
+  }, [
+    userId,
+    db,
+    currentMonth,
+    monthBounds.start,
+    monthBounds.end,
+    weekBounds.start,
+    weekBounds.end,
+  ]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  useEffect(() => {
-    const hasAlerts = lowStockAlert.length > 0 || expiringAlert.length > 0;
-    if (hasAlerts && !alertsAcknowledged.current) {
-      setShowAlertPopup(true);
-    }
-  }, [lowStockAlert, expiringAlert]);
-
   const profit = income.total - expenses.total;
-  const canGoBack = canGoToPreviousMonth(currentMonth);
+  const alertCount = lowStockAlert.length + expiringAlert.length;
+  const canGoBack = canGoToPreviousMonth(currentMonth) && hasPreviousMonthSales;
   const canGoForward = canGoToNextMonth(currentMonth);
 
   const handleMonthChange = (direction: 'prev' | 'next') => {
@@ -114,20 +123,19 @@ export default function HomeScreen() {
   };
 
   const handleCloseAlert = () => {
-    alertsAcknowledged.current = true;
     setShowAlertPopup(false);
   };
 
   if (!db.initialized || loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Cargando...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <Text style={[styles.loadingText, { color: theme.text }]}>Cargando...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {showAlertPopup && (
         <AlertPopup lowStock={lowStockAlert} expiring={expiringAlert} onClose={handleCloseAlert} />
       )}
@@ -135,65 +143,97 @@ export default function HomeScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>Hola, {user?.name || 'Usuario'}</Text>
+            <Text style={[styles.greeting, { color: theme.text }]}>
+              Hola, {user?.name || 'Usuario'}
+            </Text>
             {user?.businessName ? (
-              <Text style={styles.businessName}>{user.businessName}</Text>
+              <Text style={[styles.businessName, { color: theme.textSecondary }]}>
+                {user.businessName}
+              </Text>
             ) : null}
           </View>
           <TouchableOpacity
-            style={styles.settingsButton}
+            style={[styles.settingsButton, { backgroundColor: theme.primarySoft }]}
             onPress={() => router.push('/settings')}
             accessibilityLabel="Ajustes de la cuenta"
           >
-            <Text style={styles.avatarText}>{user?.name?.charAt(0).toUpperCase() || 'U'}</Text>
+            <Text style={[styles.avatarText, { color: theme.primary }]}>
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
+            </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.monthSelector}>
           <TouchableOpacity
-            style={[styles.monthNavButton, !canGoBack && styles.monthNavButtonDisabled]}
+            style={[
+              styles.monthNavButton,
+              { backgroundColor: theme.card, borderColor: theme.border },
+              !canGoBack && styles.monthNavButtonDisabled,
+            ]}
             onPress={() => handleMonthChange('prev')}
             disabled={!canGoBack}
             accessibilityLabel="Mes anterior"
           >
-            <Text style={[styles.monthNavIcon, !canGoBack && styles.monthNavIconDisabled]}>‹</Text>
+            <Text
+              style={[
+                styles.monthNavIcon,
+                { color: theme.text },
+                !canGoBack && styles.monthNavIconDisabled,
+              ]}
+            >
+              ‹
+            </Text>
           </TouchableOpacity>
 
-          <Text style={styles.monthLabel}>{capitalize(formatMonthLabel(currentMonth))}</Text>
+          <Text style={[styles.monthLabel, { color: theme.text }]}>
+            {capitalize(formatMonthLabel(currentMonth))}
+          </Text>
 
           <TouchableOpacity
-            style={[styles.monthNavButton, !canGoForward && styles.monthNavButtonDisabled]}
+            style={[
+              styles.monthNavButton,
+              { backgroundColor: theme.card, borderColor: theme.border },
+              !canGoForward && styles.monthNavButtonDisabled,
+            ]}
             onPress={() => handleMonthChange('next')}
             disabled={!canGoForward}
             accessibilityLabel="Mes siguiente"
           >
-            <Text style={[styles.monthNavIcon, !canGoForward && styles.monthNavIconDisabled]}>
+            <Text
+              style={[
+                styles.monthNavIcon,
+                { color: theme.text },
+                !canGoForward && styles.monthNavIconDisabled,
+              ]}
+            >
               ›
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.cardRow}>
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.cardRow}>
               <View style={styles.cardInfo}>
-                <Text style={styles.cardLabel}>Ingresos</Text>
-                <Text style={styles.cardValueIncome}>{currencyFormatter.format(income.total)}</Text>
-                <Text style={styles.cardBadgeText}>
+                <Text style={[styles.cardLabel, { color: theme.text }]}>Ingresos</Text>
+                <Text style={[styles.cardValueIncome, { color: theme.success }]}>
+                  {currencyFormatter.format(income.total)}
+                </Text>
+                <Text style={[styles.cardBadgeText, { color: theme.textSecondary }]}>
                   {income.count} {income.count === 1 ? 'venta' : 'ventas'}
                 </Text>
               </View>
             </View>
           </View>
 
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.cardRow}>
               <View style={styles.cardInfo}>
-                <Text style={styles.cardLabel}>Egresos</Text>
-                <Text style={styles.cardValueExpense}>
+                <Text style={[styles.cardLabel, { color: theme.text }]}>Egresos</Text>
+                <Text style={[styles.cardValueExpense, { color: theme.danger }]}>
                   {currencyFormatter.format(expenses.total)}
                 </Text>
-                <Text style={styles.cardBadgeText}>
+                <Text style={[styles.cardBadgeText, { color: theme.textSecondary }]}>
                   {expenses.count} {expenses.count === 1 ? 'registro' : 'registros'}
                 </Text>
               </View>
@@ -201,43 +241,95 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={styles.cardProfit}>
+        {alertCount > 0 && (
+          <TouchableOpacity
+            style={[
+              styles.alertSummary,
+              { backgroundColor: theme.warningSoft, borderColor: theme.warning },
+            ]}
+            onPress={() => setShowAlertPopup(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Alertas: ${alertCount}`}
+          >
+            <Text style={[styles.alertSummaryLabel, { color: theme.warning }]}>Alertas:</Text>
+            <Text style={[styles.alertSummaryCount, { color: theme.warning }]}>{alertCount}</Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={[styles.cardProfit, { backgroundColor: theme.primary }]}>
           <View style={styles.profitRow}>
             <View>
-              <Text style={styles.profitLabel}>Ganancia neta</Text>
+              <Text style={[styles.profitLabel, { color: theme.onPrimary, opacity: 0.75 }]}>
+                Ganancia neta
+              </Text>
               <Text
                 style={[
                   styles.profitValue,
-                  profit >= 0 ? styles.profitPositive : styles.profitNegative,
+                  { color: theme.onPrimary },
                 ]}
               >
                 {currencyFormatter.format(profit)}
               </Text>
             </View>
             <View style={styles.avgSaleContainer}>
-              <Text style={styles.avgSaleLabel}>Venta promedio</Text>
-              <Text style={styles.avgSaleValue}>{currencyFormatter.format(avgSale)}</Text>
+              <Text style={[styles.avgSaleLabel, { color: theme.onPrimary, opacity: 0.75 }]}>
+                Venta promedio
+              </Text>
+              <Text style={[styles.avgSaleValue, { color: theme.onPrimary }]}>
+                {currencyFormatter.format(avgSale)}
+              </Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Ventas vs gastos de esta semana</Text>
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={[styles.quickAction, styles.primaryAction, { backgroundColor: theme.primary }]}
+            onPress={() => router.push('/sale/new')}
+            accessibilityRole="button"
+            accessibilityLabel="Nueva venta"
+          >
+            <Text style={[styles.primaryActionText, { color: theme.onPrimary }]}>Nueva venta</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.quickAction,
+              styles.secondaryAction,
+              { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+            ]}
+            onPress={() => router.push('/expense/new')}
+            accessibilityRole="button"
+            accessibilityLabel="Nuevo gasto"
+          >
+            <Text style={[styles.secondaryActionText, { color: theme.text }]}>Nuevo gasto</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Ventas vs gastos de esta semana
+          </Text>
           <WeeklyChart data={weeklyData} weekStart={weekBounds.start} />
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Productos más vendidos</Text>
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Productos más vendidos</Text>
           {topProducts.length === 0 ? (
-            <Text style={styles.emptyText}>No hay ventas este mes</Text>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              No hay ventas este mes
+            </Text>
           ) : (
             <View style={styles.topProductsList}>
               {topProducts.map((product, index) => (
                 <View key={`${product.product_name}-${index}`} style={styles.topProductRow}>
-                  <Text style={styles.topProductRank}>#{index + 1}</Text>
+                  <Text style={[styles.topProductRank, { color: theme.primary }]}>
+                    #{index + 1}
+                  </Text>
                   <View style={styles.topProductInfo}>
-                    <Text style={styles.topProductName}>{product.product_name}</Text>
-                    <Text style={styles.topProductMeta}>
+                    <Text style={[styles.topProductName, { color: theme.text }]}>
+                      {product.product_name}
+                    </Text>
+                    <Text style={[styles.topProductMeta, { color: theme.textSecondary }]}>
                       {formatQuantity(product.total_quantity)} vendidos •{' '}
                       {currencyFormatter.format(product.total_profit)} ganancia
                     </Text>
@@ -263,24 +355,31 @@ function AlertPopup({
   expiring: { name: string; expiry_date: string }[];
   onClose: () => void;
 }) {
+  const theme = useTheme();
+
   return (
     <View style={styles.alertOverlay}>
-      <View style={styles.alertContainer}>
+      <View
+        style={[
+          styles.alertContainer,
+          { backgroundColor: theme.card, borderColor: theme.warning },
+        ]}
+      >
         <View style={styles.alertHeader}>
           <Text style={styles.alertIcon}>⚠️</Text>
-          <Text style={styles.alertTitle}>Alertas</Text>
+          <Text style={[styles.alertTitle, { color: theme.text }]}>Alertas</Text>
         </View>
 
         <ScrollView style={styles.alertScroll} contentContainerStyle={styles.alertScrollContent}>
           {lowStock.length > 0 && (
           <View style={styles.alertSection}>
-            <Text style={styles.alertSectionTitle}>Stock bajo</Text>
+            <Text style={[styles.alertSectionTitle, { color: theme.warning }]}>Stock bajo</Text>
             {lowStock.map((item, index) => (
               <View key={`stock-${index}`} style={styles.alertItem}>
-                <Text style={styles.alertItemName} numberOfLines={1}>
+                <Text style={[styles.alertItemName, { color: theme.text }]} numberOfLines={1}>
                   {item.name}
                 </Text>
-                <Text style={styles.alertItemValue}>
+                <Text style={[styles.alertItemValue, { color: theme.textSecondary }]}>
                   {formatQuantity(item.stock)} {item.unit}
                 </Text>
               </View>
@@ -290,13 +389,15 @@ function AlertPopup({
 
         {expiring.length > 0 && (
           <View style={styles.alertSection}>
-            <Text style={styles.alertSectionTitle}>Próximos a caducar</Text>
+            <Text style={[styles.alertSectionTitle, { color: theme.danger }]}>
+              Próximos a caducar
+            </Text>
             {expiring.map((item, index) => (
               <View key={`expiry-${index}`} style={styles.alertItem}>
-                <Text style={styles.alertItemName} numberOfLines={1}>
+                <Text style={[styles.alertItemName, { color: theme.text }]} numberOfLines={1}>
                   {item.name}
                 </Text>
-                <Text style={styles.alertItemValue}>
+                <Text style={[styles.alertItemValue, { color: theme.textSecondary }]}>
                   Caduca: {formatDateKeyShort(item.expiry_date)}
                 </Text>
               </View>
@@ -305,8 +406,11 @@ function AlertPopup({
         )}
         </ScrollView>
 
-        <TouchableOpacity style={styles.alertCloseButton} onPress={onClose}>
-          <Text style={styles.alertCloseButtonText}>Entendido</Text>
+        <TouchableOpacity
+          style={[styles.alertCloseButton, { backgroundColor: theme.primary }]}
+          onPress={onClose}
+        >
+          <Text style={[styles.alertCloseButtonText, { color: theme.onPrimary }]}>Entendido</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -320,6 +424,7 @@ function WeeklyChart({
   data: { date: string; income: number; expense: number }[];
   weekStart: string;
 }) {
+  const theme = useTheme();
   const chartData = useMemo(() => {
     const start = parseDateKey(weekStart) ?? new Date();
     return Array.from({ length: 7 }, (_, index) => {
@@ -350,6 +455,7 @@ function WeeklyChart({
               <View
                 style={[
                   styles.chartBar,
+                  { backgroundColor: theme.success },
                   { height: Math.max((item.income / overallMax) * 150, 2) },
                 ]}
               />
@@ -357,12 +463,17 @@ function WeeklyChart({
                 style={[
                   styles.chartBar,
                   styles.chartBarExpense,
+                  { backgroundColor: theme.danger },
                   { height: Math.max((item.expense / overallMax) * 150, 2) },
                 ]}
               />
             </View>
             <Text
-              style={[styles.chartDayLabel, item.key === today && styles.chartDayLabelToday]}
+              style={[
+                styles.chartDayLabel,
+                { color: theme.textSecondary },
+                item.key === today && { color: theme.primary },
+              ]}
               accessibilityLabel={item.accessibleLabel}
             >
               {item.label}
@@ -372,12 +483,12 @@ function WeeklyChart({
       </View>
       <View style={styles.chartLegend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
-          <Text style={styles.legendText}>Ingresos</Text>
+          <View style={[styles.legendDot, { backgroundColor: theme.success }]} />
+          <Text style={[styles.legendText, { color: theme.textSecondary }]}>Ingresos</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
-          <Text style={styles.legendText}>Egresos</Text>
+          <View style={[styles.legendDot, { backgroundColor: theme.danger }]} />
+          <Text style={[styles.legendText, { color: theme.textSecondary }]}>Egresos</Text>
         </View>
       </View>
     </View>
@@ -536,6 +647,61 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  quickAction: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryAction: {
+    backgroundColor: '#6366F1',
+  },
+  secondaryAction: {
+    backgroundColor: '#F4F4F5',
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+  },
+  primaryActionText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  secondaryActionText: {
+    color: '#27272A',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  alertSummary: {
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
+  alertSummaryLabel: {
+    color: '#92400E',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  alertSummaryCount: {
+    color: '#B45309',
+    fontSize: 15,
+    fontWeight: '800',
   },
   profitRow: {
     flexDirection: 'row',

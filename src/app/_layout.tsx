@@ -1,13 +1,19 @@
 import '../../global.css';
 
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useColorScheme } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Providers } from '../providers/Providers';
 import { useAuthStore } from '../hooks/useAuthStore';
+import { useTheme } from '../hooks/useTheme';
 
 export default function RootLayout() {
   return (
     <Providers>
-      <RootNavigator />
+      <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+        <RootNavigator />
+      </SafeAreaView>
     </Providers>
   );
 }
@@ -20,6 +26,8 @@ export default function RootLayout() {
  * regresa al login, al welcome ni al tour.
  */
 function RootNavigator() {
+  const theme = useTheme();
+  const colorScheme = useColorScheme();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const onboardingCompleted = useAuthStore(
     (state) => state.user?.onboardingCompleted ?? false
@@ -29,12 +37,16 @@ function RootNavigator() {
   const isApp = isAuthenticated && onboardingCompleted;
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: '#FAFAFA' },
-      }}
-    >
+    <>
+      <StatusBar
+        style={colorScheme === 'dark' ? 'light' : 'dark'}
+      />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: theme.background },
+        }}
+      >
       {/* Sin sesión: bienvenida, iniciar sesión y registrarse. */}
       <Stack.Protected
         guard={!isAuthenticated}
@@ -77,6 +89,7 @@ function RootNavigator() {
         <Stack.Screen name="supply/new" />
         <Stack.Screen name="supply/edit/[id]" />
       </Stack.Protected>
-    </Stack>
+      </Stack>
+    </>
   );
 }

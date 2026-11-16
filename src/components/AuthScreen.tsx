@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
+import { useTheme } from '../hooks/useTheme';
 
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? '';
 const IS_GOOGLE_CONFIGURED =
@@ -14,6 +15,7 @@ interface AuthScreenProps {
 }
 
 export function AuthScreen({ mode }: AuthScreenProps) {
+  const theme = useTheme();
   const isLogin = mode === 'login';
   const { user, hasHydrated, loginWithGoogle, registerWithGoogle, continueAsLocal } =
     useAuthStore();
@@ -131,7 +133,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.logoContainer}>
         <Text style={styles.appName}>Trazzo</Text>
         <Text style={styles.appSubtitle}>

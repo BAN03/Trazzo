@@ -12,6 +12,7 @@ import {
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
+import { useTheme } from '../hooks/useTheme';
 import { DatePickerModal } from './DatePickerModal';
 import {
   addDays,
@@ -55,6 +56,7 @@ interface SaleFormProps {
 const makeKey = () => `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
 export function SaleForm({ mode, saleId }: SaleFormProps) {
+  const theme = useTheme();
   const isEditing = mode === 'edit';
   const user = useAuthStore((state) => state.user);
   const db = useDatabase();
@@ -373,7 +375,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}

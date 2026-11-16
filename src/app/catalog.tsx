@@ -15,6 +15,7 @@ import {
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
+import { useTheme } from '../hooks/useTheme';
 import { BottomTabBar } from '../components/BottomTabBar';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { formatQuantity, sanitizeDecimal } from '../utils/numbers';
@@ -28,6 +29,7 @@ const currencyFormatter = new Intl.NumberFormat('es-MX', {
 export default function CatalogScreen() {
   const user = useAuthStore((state) => state.user);
   const db = useDatabase();
+  const theme = useTheme();
 
   const [activeTab, setActiveTab] = useState<'products' | 'supplies'>('products');
   const [searchQuery, setSearchQuery] = useState('');
@@ -161,14 +163,14 @@ export default function CatalogScreen() {
 
   if (!db.initialized || loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
         <Text style={styles.loadingText}>Cargando...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>

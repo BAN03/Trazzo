@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'rea
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
+import { useTheme } from '../hooks/useTheme';
 import { BottomTabBar } from '../components/BottomTabBar';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
@@ -45,6 +46,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function MovementsScreen() {
   const user = useAuthStore((state) => state.user);
   const db = useDatabase();
+  const theme = useTheme();
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'sales' | 'expenses'>('sales');
@@ -68,6 +70,7 @@ export default function MovementsScreen() {
   const [incomeStats, setIncomeStats] = useState({ total: 0, count: 0 });
   const [expenseStats, setExpenseStats] = useState({ total: 0, count: 0 });
   const [saleSummaries, setSaleSummaries] = useState<Record<string, string>>({});
+  const [hasPreviousMonthSales, setHasPreviousMonthSales] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const userId = user?.id;
@@ -78,13 +81,16 @@ export default function MovementsScreen() {
     setLoading(true);
 
     const monthBounds = getMonthBounds(currentMonth);
+    const previousMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+    const previousMonthBounds = getMonthBounds(previousMonth);
 
     try {
-      const [salesData, expenseData, incomeS, expenseS] = await Promise.all([
+      const [salesData, expenseData, incomeS, expenseS, previousMonthSales] = await Promise.all([
         Promise.resolve(db.getSales(userId, monthBounds.start, monthBounds.end)),
         Promise.resolve(db.getExpenses(userId, monthBounds.start, monthBounds.end)),
         Promise.resolve(db.getSalesStats(userId, monthBounds.start, monthBounds.end)),
         Promise.resolve(db.getExpensesStats(userId, monthBounds.start, monthBounds.end)),
+        Promise.resolve(db.getSales(userId, previousMonthBounds.start, previousMonthBounds.end)),
       ]);
 
       const summaries = db.getSaleItemSummaries(userId, monthBounds.start, monthBounds.end);
@@ -93,6 +99,7 @@ export default function MovementsScreen() {
       setExpenses(expenseData);
       setIncomeStats({ total: incomeS.total_amount, count: incomeS.total_sales });
       setExpenseStats({ total: expenseS.total_amount, count: expenseS.total_expenses });
+      setHasPreviousMonthSales(previousMonthSales.length > 0);
       setSaleSummaries(
         summaries.reduce<Record<string, string>>((acc, row) => {
           acc[row.sale_id] = row.summary;
@@ -111,7 +118,7 @@ export default function MovementsScreen() {
   }, [loadData]);
 
   const monthLabel = capitalize(formatMonthLabel(currentMonth));
-  const canGoBack = canGoToPreviousMonth(currentMonth);
+  const canGoBack = canGoToPreviousMonth(currentMonth) && hasPreviousMonthSales;
   const canGoForward = canGoToNextMonth(currentMonth);
 
   const handleMonthChange = (direction: 'prev' | 'next') => {
@@ -161,45 +168,72 @@ export default function MovementsScreen() {
 
   if (!db.initialized || loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Cargando...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <Text style={[styles.loadingText, { color: theme.text }]}>Cargando...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.title}>Movimientos</Text>
+            <Text style={[styles.title, { color: theme.text }]}>Movimientos</Text>
           </View>
-          <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/settings')}>
-            <Text style={styles.avatarText}>{user?.name?.charAt(0).toUpperCase() || 'U'}</Text>
+          <TouchableOpacity
+            style={[styles.settingsButton, { backgroundColor: theme.primarySoft }]}
+            onPress={() => router.push('/settings')}
+          >
+            <Text style={[styles.avatarText, { color: theme.primary }]}>
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Month Selector */}
         <View style={styles.monthSelector}>
           <TouchableOpacity
-            style={[styles.monthNavButton, !canGoBack && styles.monthNavButtonDisabled]}
+            style={[
+              styles.monthNavButton,
+              { backgroundColor: theme.card, borderColor: theme.border },
+              !canGoBack && styles.monthNavButtonDisabled,
+            ]}
             onPress={() => handleMonthChange('prev')}
             disabled={!canGoBack}
             accessibilityLabel="Mes anterior"
           >
-            <Text style={[styles.monthNavIcon, !canGoBack && styles.monthNavIconDisabled]}>‹</Text>
+            <Text
+              style={[
+                styles.monthNavIcon,
+                { color: theme.text },
+                !canGoBack && styles.monthNavIconDisabled,
+              ]}
+            >
+              ‹
+            </Text>
           </TouchableOpacity>
 
-          <Text style={styles.monthLabel}>{monthLabel}</Text>
+          <Text style={[styles.monthLabel, { color: theme.text }]}>{monthLabel}</Text>
 
           <TouchableOpacity
-            style={[styles.monthNavButton, !canGoForward && styles.monthNavButtonDisabled]}
+            style={[
+              styles.monthNavButton,
+              { backgroundColor: theme.card, borderColor: theme.border },
+              !canGoForward && styles.monthNavButtonDisabled,
+            ]}
             onPress={() => handleMonthChange('next')}
             disabled={!canGoForward}
             accessibilityLabel="Mes siguiente"
           >
-            <Text style={[styles.monthNavIcon, !canGoForward && styles.monthNavIconDisabled]}>
+            <Text
+              style={[
+                styles.monthNavIcon,
+                { color: theme.text },
+                !canGoForward && styles.monthNavIconDisabled,
+              ]}
+            >
               ›
             </Text>
           </TouchableOpacity>
@@ -210,12 +244,14 @@ export default function MovementsScreen() {
           <TouchableOpacity
             style={[
               styles.tabButton,
+              { backgroundColor: theme.backgroundElement },
               activeTab === 'sales' && styles.tabButtonActive,
             ]}
             onPress={() => setActiveTab('sales')}
           >
             <Text style={[
               styles.tabButtonText,
+              { color: theme.textSecondary },
               activeTab === 'sales' && styles.tabButtonTextActive,
             ]}>
               Ventas
@@ -225,12 +261,14 @@ export default function MovementsScreen() {
           <TouchableOpacity
             style={[
               styles.tabButton,
+              { backgroundColor: theme.backgroundElement },
               activeTab === 'expenses' && styles.tabButtonActive,
             ]}
             onPress={() => setActiveTab('expenses')}
           >
             <Text style={[
               styles.tabButtonText,
+              { color: theme.textSecondary },
               activeTab === 'expenses' && styles.tabButtonTextActive,
             ]}>
               Gastos
@@ -240,28 +278,32 @@ export default function MovementsScreen() {
 
         {/* Stats Cards */}
         {activeTab === 'sales' ? (
-          <View style={styles.statsCard}>
+          <View style={[styles.statsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Total vendido</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total vendido</Text>
                 <Text style={styles.statValueIncome}>{currencyFormatter.format(incomeStats.total)}</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Número de ventas</Text>
-                <Text style={styles.statValue}>{incomeStats.count}</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+                  Número de ventas
+                </Text>
+                <Text style={[styles.statValue, { color: theme.text }]}>{incomeStats.count}</Text>
               </View>
             </View>
           </View>
         ) : (
-          <View style={styles.statsCard}>
+          <View style={[styles.statsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Total gastado</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total gastado</Text>
                 <Text style={styles.statValueExpense}>{currencyFormatter.format(expenseStats.total)}</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Número de registros</Text>
-                <Text style={styles.statValue}>{expenseStats.count}</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+                  Número de registros
+                </Text>
+                <Text style={[styles.statValue, { color: theme.text }]}>{expenseStats.count}</Text>
               </View>
             </View>
           </View>
@@ -283,22 +325,26 @@ export default function MovementsScreen() {
         {activeTab === 'sales' ? (
           sales.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No hay ventas este mes</Text>
-              <Text style={styles.emptySubtext}>Presiona "Agregar nueva venta" para empezar</Text>
+              <Text style={[styles.emptyText, { color: theme.text }]}>No hay ventas este mes</Text>
+              <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
+                Presiona "Agregar nueva venta" para empezar
+              </Text>
             </View>
           ) : (
             <View style={styles.listContainer}>
               {sales.map((sale) => (
                 <TouchableOpacity
                   key={sale.id}
-                  style={styles.listItem}
+                  style={[styles.listItem, { backgroundColor: theme.card, borderColor: theme.border }]}
                   onPress={() => handleEditSale(sale.id)}
                   onLongPress={() => handleDeleteSale(sale.id)}
                   delayLongPress={400}
                   accessibilityHint="Mantén presionado para eliminar la venta"
                 >
                   <View style={styles.listItemLeft}>
-                    <Text style={styles.listItemDate}>{formatDateKeyDayMonth(sale.date)}</Text>
+                    <Text style={[styles.listItemDate, { color: theme.text }]}>
+                      {formatDateKeyDayMonth(sale.date)}
+                    </Text>
                     <View style={styles.listItemMeta}>
                       <Text style={styles.listItemPayment}>
                         {PAYMENT_METHOD_LABELS[sale.payment_method] || sale.payment_method}
@@ -312,7 +358,7 @@ export default function MovementsScreen() {
                         </Text>
                       </View>
                     </View>
-                    <Text style={styles.listItemProducts} numberOfLines={2}>
+                    <Text style={[styles.listItemProducts, { color: theme.textSecondary }]} numberOfLines={2}>
                       {saleSummaries[sale.id] || 'Sin detalle de productos'}
                     </Text>
                   </View>
@@ -320,7 +366,7 @@ export default function MovementsScreen() {
                     <Text style={styles.listItemAmount}>
                       {currencyFormatter.format(sale.total_amount)}
                     </Text>
-                    <Text style={styles.listItemCount}>
+                    <Text style={[styles.listItemCount, { color: theme.textSecondary }]}>
                       {formatQuantity(sale.total_items)} art.
                     </Text>
                     <View style={styles.editChip}>
@@ -334,15 +380,17 @@ export default function MovementsScreen() {
         ) : (
           expenses.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No hay gastos este mes</Text>
-              <Text style={styles.emptySubtext}>Presiona "Agregar nuevo gasto" para empezar</Text>
+              <Text style={[styles.emptyText, { color: theme.text }]}>No hay gastos este mes</Text>
+              <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
+                Presiona "Agregar nuevo gasto" para empezar
+              </Text>
             </View>
           ) : (
             <View style={styles.listContainer}>
               {expenses.map((expense) => (
                 <TouchableOpacity
                   key={expense.id}
-                  style={styles.listItem}
+                  style={[styles.listItem, { backgroundColor: theme.card, borderColor: theme.border }]}
                   onPress={() => handleEditExpense(expense.id)}
                   onLongPress={() => handleDeleteExpense(expense.id)}
                   delayLongPress={400}

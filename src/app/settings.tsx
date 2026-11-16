@@ -1,6 +1,7 @@
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
+import { useTheme } from '../hooks/useTheme';
 import { getBusinessTypeLabel } from '../utils/business';
 
 const APP_VERSION = '1.0.0';
@@ -16,6 +17,7 @@ const UPCOMING_FEATURES = [
 export default function SettingsScreen() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const theme = useTheme();
 
   const initial = user?.name?.charAt(0).toUpperCase() || 'U';
 
@@ -38,7 +40,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <TouchableOpacity

@@ -12,6 +12,7 @@ import {
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
+import { useTheme } from '../hooks/useTheme';
 import { DatePickerModal } from './DatePickerModal';
 import { addDays, formatDateKeyLong, toDateKey, todayKey } from '../utils/date';
 import { sanitizeDecimal } from '../utils/numbers';
@@ -34,6 +35,7 @@ interface ExpenseFormProps {
 }
 
 export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
+  const theme = useTheme();
   const isEditing = mode === 'edit';
   const user = useAuthStore((state) => state.user);
   const db = useDatabase();
@@ -169,7 +171,7 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}

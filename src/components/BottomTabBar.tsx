@@ -1,22 +1,65 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../hooks/useTheme';
 
 export type TabKey = 'home' | 'movements' | 'catalog' | 'tasks' | 'reports';
+type IconName = keyof typeof Ionicons.glyphMap;
 
-const TABS: { key: TabKey; label: string; icon: string; path: string }[] = [
-  { key: 'home', label: 'Inicio', icon: '🏠', path: '/home' },
-  { key: 'movements', label: 'Movimientos', icon: '💰', path: '/movements' },
-  { key: 'catalog', label: 'Catálogo', icon: '📦', path: '/catalog' },
-  { key: 'tasks', label: 'Tareas', icon: '✅', path: '/tasks' },
-  { key: 'reports', label: 'Informes', icon: '📊', path: '/reports' },
+const TABS: {
+  key: TabKey;
+  label: string;
+  activeIcon: IconName;
+  inactiveIcon: IconName;
+  path: string;
+}[] = [
+  { key: 'home', label: 'Inicio', activeIcon: 'home', inactiveIcon: 'home-outline', path: '/home' },
+  {
+    key: 'movements',
+    label: 'Movimientos',
+    activeIcon: 'swap-vertical',
+    inactiveIcon: 'swap-vertical-outline',
+    path: '/movements',
+  },
+  {
+    key: 'catalog',
+    label: 'Catálogo',
+    activeIcon: 'pricetags',
+    inactiveIcon: 'pricetags-outline',
+    path: '/catalog',
+  },
+  {
+    key: 'tasks',
+    label: 'Tareas',
+    activeIcon: 'checkbox',
+    inactiveIcon: 'checkbox-outline',
+    path: '/tasks',
+  },
+  {
+    key: 'reports',
+    label: 'Informes',
+    activeIcon: 'stats-chart',
+    inactiveIcon: 'stats-chart-outline',
+    path: '/reports',
+  },
 ];
 
 export function BottomTabBar({ active }: { active: TabKey }) {
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
 
   return (
-    <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View
+      style={[
+        styles.tabBar,
+        {
+          backgroundColor: theme.card,
+          borderTopColor: theme.border,
+          paddingBottom: Math.max(insets.bottom, 8),
+        },
+      ]}
+    >
       {TABS.map((tab) => {
         const isActive = tab.key === active;
         return (
@@ -30,8 +73,20 @@ export function BottomTabBar({ active }: { active: TabKey }) {
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={tab.label}
           >
-            <Text style={[styles.tabIcon, !isActive && styles.tabIconInactive]}>{tab.icon}</Text>
-            <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
+            <Ionicons
+              name={isActive ? tab.activeIcon : tab.inactiveIcon}
+              size={22}
+              color={isActive ? theme.primary : theme.textSecondary}
+            />
+            <Text
+              style={[
+                styles.tabLabel,
+                { color: theme.textSecondary },
+                isActive && { color: theme.primary },
+              ]}
+            >
+              {tab.label}
+            </Text>
           </TouchableOpacity>
         );
       })}
@@ -60,19 +115,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     minWidth: 60,
   },
-  tabIcon: {
-    fontSize: 22,
-  },
-  tabIconInactive: {
-    opacity: 0.55,
-  },
   tabLabel: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#A1A1AA',
-  },
-  tabLabelActive: {
-    fontWeight: '700',
-    color: '#6366F1',
   },
 });

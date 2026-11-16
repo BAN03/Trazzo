@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
+import { useTheme } from '../hooks/useTheme';
 import { BottomTabBar } from '../components/BottomTabBar';
 import {
   canGoToNextMonth,
@@ -48,6 +49,7 @@ interface WeekBucket {
 export default function ReportsScreen() {
   const user = useAuthStore((state) => state.user);
   const db = useDatabase();
+  const theme = useTheme();
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [income, setIncome] = useState({ total: 0, count: 0 });
@@ -172,14 +174,14 @@ export default function ReportsScreen() {
 
   if (!db.initialized || loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
         <Text style={styles.loadingText}>Cargando...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
