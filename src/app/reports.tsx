@@ -250,24 +250,25 @@ export default function ReportsScreen() {
           </View>
         </View>
 
-        <View style={styles.profitCard}>
+        <View style={[styles.profitCard, {backgroundColor: theme.primary}]}>
           <View>
-            <Text style={styles.profitLabel}>Ganancia neta</Text>
+            <Text style={[styles.profitLabel, { color: theme.onPrimary, opacity: 0.75 }]}>
+              Ganancia neta</Text>
             <Text
               style={[
                 styles.profitValue,
-                profit >= 0 ? styles.profitPositive : styles.profitNegative,
+                { color: theme.onPrimary },
               ]}
             >
               {currencyFormatter.format(profit)}
             </Text>
           </View>
           <View style={styles.marginBadge}>
-            <Text style={styles.marginLabel}>Margen</Text>
+            <Text style={[styles.marginLabel, {color: theme.onPrimary}]}>Margen</Text>
             <Text
               style={[
-                styles.marginValue,
-                profit >= 0 ? styles.profitPositive : styles.profitNegative,
+                styles.profitValue,
+                { color: theme.onPrimary },
               ]}
             >
               {income.total > 0 ? `${margin.toFixed(0)}%` : '—'}

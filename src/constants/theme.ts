@@ -1,3 +1,5 @@
+import { Background } from "expo-router/build/react-navigation/index.js";
+
 export const Colors = {
   light: {
     text: '#0F172A',
@@ -15,6 +17,7 @@ export const Colors = {
     warning: '#B45309',
     warningSoft: '#FEF3C7',
     overlay: 'rgba(15, 23, 42, 0.45)',
+    disabled: '#7c7ee6',
   },
   dark: {
     text: '#F1F5F9',
@@ -32,6 +35,7 @@ export const Colors = {
     warning: '#FBBF24',
     warningSoft: '#451A03',
     overlay: 'rgba(2, 6, 23, 0.65)',
+    disabled: '#1B2637',
   },
 } as const;
 
