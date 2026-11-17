@@ -403,34 +403,6 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Producto</Text>
 
-          {topProducts.length > 0 && (
-            <View style={styles.topProductsContainer}>
-              <Text style={styles.topProductsLabel}>Más vendidos</Text>
-              <View style={styles.topProductsList}>
-                {topProducts.map((product) => (
-                  <TouchableOpacity
-                    key={product.id}
-                    style={[
-                      styles.topProductButton,
-                      selectedProductId === product.id && styles.topProductButtonSelected,
-                    ]}
-                    onPress={() => selectProduct(product.id)}
-                  >
-                    <Text style={styles.topProductButtonName} numberOfLines={1}>
-                      {product.name}
-                    </Text>
-                    <Text style={styles.topProductButtonPrice}>
-                      {currencyFormatter.format(product.sale_price)} / {product.unit}
-                    </Text>
-                    <Text style={styles.topProductButtonStock}>
-                      Stock: {product.stock} {product.unit}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
           {products.length === 0 ? (
             <View style={styles.emptyProducts}>
               <Text style={styles.emptyProductsIcon}>📦</Text>
@@ -458,6 +430,34 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
               placeholderTextColor="#A1A1AA"
               autoCorrect={false}
             />
+          )}
+
+          {!showProductSearch && topProducts.length > 0 && (
+            <View style={styles.topProductsContainer}>
+              <Text style={styles.topProductsLabel}>Más vendidos</Text>
+              <View style={styles.topProductsList}>
+                {topProducts.map((product) => (
+                  <TouchableOpacity
+                    key={product.id}
+                    style={[
+                      styles.topProductButton,
+                      selectedProductId === product.id && styles.topProductButtonSelected,
+                    ]}
+                    onPress={() => selectProduct(product.id)}
+                  >
+                    <Text style={styles.topProductButtonName} numberOfLines={1}>
+                      {product.name}
+                    </Text>
+                    <Text style={styles.topProductButtonPrice}>
+                      {currencyFormatter.format(product.sale_price)} / {product.unit}
+                    </Text>
+                    <Text style={styles.topProductButtonStock}>
+                      Stock: {product.stock} {product.unit}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           )}
 
           {showProductSearch && filteredProducts.length > 0 && (

@@ -135,7 +135,8 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   featureCard: {
-    flexDirection: 'row',
+    flexDirection: 'column',
+    alignItems:'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
@@ -160,6 +161,7 @@ const styles = StyleSheet.create({
   },
   featureDescription: {
     fontSize: 14,
+    textAlign: 'center',
     color: '#27272A',
     marginTop: 4,
     lineHeight: 20,
