@@ -1,5 +1,3 @@
-import { Background } from "expo-router/build/react-navigation/index.js";
-
 export const Colors = {
   light: {
     text: '#0F172A',
