@@ -331,4 +331,16 @@ export const getStoredLocalUser = (): {
   };
 };
 
+export const resetUserProfile = (userId: string): void => {
+  if (!userId) return;
+  initDatabase();
+  db.runSync(
+    `UPDATE users
+     SET name = ?, business_name = NULL, business_type = NULL,
+         onboarding_completed = 0, updated_at = ?
+     WHERE id = ?`,
+    ['Usuario', getCurrentDateTime(), userId]
+  );
+};
+
 export default db;

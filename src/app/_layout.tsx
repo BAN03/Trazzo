@@ -9,9 +9,14 @@ import { useAuthStore } from '../hooks/useAuthStore';
 import { useTheme } from '../hooks/useTheme';
 
 export default function RootLayout() {
+  const theme = useTheme();
+
   return (
     <Providers>
-      <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+      <SafeAreaView
+        edges={['top']}
+        style={{ flex: 1, backgroundColor: theme.background }}
+      >
         <RootNavigator />
       </SafeAreaView>
     </Providers>
@@ -44,6 +49,7 @@ function RootNavigator() {
       <Stack
         screenOptions={{
           headerShown: false,
+          animation: 'fade',
           contentStyle: { backgroundColor: theme.background },
         }}
       >

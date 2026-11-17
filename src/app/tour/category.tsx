@@ -6,6 +6,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { BUSINESS_TYPES } from '../../utils/business';
+import { AppIcon } from '../../components/AppIcon';
 import React from 'react';
 
 export default function TourCategoryScreen() {
@@ -50,7 +51,7 @@ export default function TourCategoryScreen() {
             onPress={() => setSelectedCategory(category.id)}
           >
             <View style={styles.categoryIconContainer}>
-              <Text style={styles.categoryIcon}>{category.icon}</Text>
+              <AppIcon name={category.icon} size={30} color={theme.primary} />
             </View>
             <Text style={[
               styles.categoryLabel,

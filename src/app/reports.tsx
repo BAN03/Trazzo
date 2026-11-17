@@ -16,6 +16,7 @@ import {
 } from '../utils/date';
 import { formatQuantity } from '../utils/numbers';
 import { AppIcon } from '../components/AppIcon';
+import { useTabSwipe } from '../hooks/useTabSwipe';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -53,6 +54,7 @@ export default function ReportsScreen() {
   const db = useDatabase();
   const theme = useTheme();
   const styles = createStyles(theme);
+  const swipeHandlers = useTabSwipe('/reports');
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [income, setIncome] = useState({ total: 0, count: 0 });
@@ -184,7 +186,10 @@ export default function ReportsScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.background }]}
+      {...swipeHandlers}
+    >
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>

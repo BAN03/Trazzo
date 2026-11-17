@@ -18,6 +18,7 @@ import {
   todayKey,
 } from '../utils/date';
 import { formatQuantity } from '../utils/numbers';
+import { useTabSwipe } from '../hooks/useTabSwipe';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -35,6 +36,7 @@ export default function HomeScreen() {
   const db = useDatabase();
   const theme = useTheme();
   const styles = createStyles(theme);
+  const swipeHandlers = useTabSwipe('/home');
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [income, setIncome] = useState({ total: 0, count: 0 });
@@ -137,7 +139,10 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.background }]}
+      {...swipeHandlers}
+    >
       {showAlertPopup && (
         <AlertPopup lowStock={lowStockAlert} expiring={expiringAlert} onClose={handleCloseAlert} />
       )}

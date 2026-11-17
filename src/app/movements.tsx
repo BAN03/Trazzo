@@ -16,6 +16,7 @@ import {
   getMonthBounds,
 } from '../utils/date';
 import { formatQuantity } from '../utils/numbers';
+import { useTabSwipe } from '../hooks/useTabSwipe';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -49,6 +50,7 @@ export default function MovementsScreen() {
   const db = useDatabase();
   const theme = useTheme();
   const styles = createStyles(theme);
+  const swipeHandlers = useTabSwipe('/movements');
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'sales' | 'expenses'>('sales');
@@ -177,7 +179,10 @@ export default function MovementsScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.background }]}
+      {...swipeHandlers}
+    >
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>

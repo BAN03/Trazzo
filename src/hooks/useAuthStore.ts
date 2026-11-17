@@ -7,6 +7,7 @@ import {
   getStoredLocalUser,
   initDatabase,
   mergeLocalUserInto,
+  resetUserProfile,
   upsertUser,
 } from '../utils/database';
 
@@ -170,6 +171,13 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        const current = get().user;
+        if (current) {
+          resetUserProfile(current.id);
+          if (current.id !== LOCAL_USER_ID) {
+            resetUserProfile(LOCAL_USER_ID);
+          }
+        }
         set({ user: null, isAuthenticated: false });
       },
 

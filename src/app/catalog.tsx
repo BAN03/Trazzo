@@ -21,6 +21,7 @@ import { BottomTabBar } from '../components/BottomTabBar';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { formatQuantity, sanitizeDecimal } from '../utils/numbers';
 import { AppIcon } from '../components/AppIcon';
+import { useTabSwipe } from '../hooks/useTabSwipe';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -33,6 +34,7 @@ export default function CatalogScreen() {
   const db = useDatabase();
   const theme = useTheme();
   const styles = createStyles(theme);
+  const swipeHandlers = useTabSwipe('/catalog');
 
   const [activeTab, setActiveTab] = useState<'products' | 'supplies'>('products');
   const [searchQuery, setSearchQuery] = useState('');
@@ -173,7 +175,10 @@ export default function CatalogScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.background }]}
+      {...swipeHandlers}
+    >
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>

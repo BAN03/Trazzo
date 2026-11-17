@@ -7,14 +7,19 @@ import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { AppIcon } from '../components/AppIcon';
+import { useTabSwipe } from '../hooks/useTabSwipe';
 
 export default function TasksScreen() {
   const theme = useTheme();
   const styles = createStyles(theme);
   const user = useAuthStore((state) => state.user);
+  const swipeHandlers = useTabSwipe('/tasks');
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.background }]}
+      {...swipeHandlers}
+    >
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
