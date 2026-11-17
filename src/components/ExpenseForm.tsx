@@ -1,7 +1,11 @@
+import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../constants/theme';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,17 +16,17 @@ import {
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
-import { useTheme } from '../hooks/useTheme';
 import { DatePickerModal } from './DatePickerModal';
+import { AppIcon } from './AppIcon';
 import { addDays, formatDateKeyLong, toDateKey, todayKey } from '../utils/date';
 import { sanitizeDecimal } from '../utils/numbers';
 
 const EXPENSE_CATEGORIES = [
-  { value: 'renta', label: 'Renta', icon: '🏠' },
-  { value: 'servicios', label: 'Servicios', icon: '💡' },
-  { value: 'insumos', label: 'Insumos', icon: '📦' },
-  { value: 'salario', label: 'Salario', icon: '👥' },
-  { value: 'otros', label: 'Otros', icon: '📋' },
+  { value: 'renta', label: 'Renta', icon: 'home-outline' },
+  { value: 'servicios', label: 'Servicios', icon: 'bulb-outline' },
+  { value: 'insumos', label: 'Insumos', icon: 'cube-outline' },
+  { value: 'salario', label: 'Salario', icon: 'people-outline' },
+  { value: 'otros', label: 'Otros', icon: 'document-text-outline' },
 ] as const;
 
 type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]['value'];
@@ -36,6 +40,7 @@ interface ExpenseFormProps {
 
 export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
   const theme = useTheme();
+  const styles = createStyles(theme);
   const isEditing = mode === 'edit';
   const user = useAuthStore((state) => state.user);
   const db = useDatabase();
@@ -151,7 +156,7 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
   if (loadingExpense) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator color="#6366F1" size="large" />
+        <ActivityIndicator color={theme.primary} size="large" />
       </View>
     );
   }
@@ -171,7 +176,10 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -202,7 +210,7 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
               clearError('amount');
             }}
             keyboardType="decimal-pad"
-            placeholderTextColor="#A1A1AA"
+            placeholderTextColor={theme.textSecondary}
           />
           {errors.amount ? <Text style={styles.errorText}>{errors.amount}</Text> : null}
         </View>
@@ -217,7 +225,7 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
               setDescription(value);
               clearError('description');
             }}
-            placeholderTextColor="#A1A1AA"
+            placeholderTextColor={theme.textSecondary}
             autoCapitalize="sentences"
             maxLength={100}
           />
@@ -236,7 +244,7 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
                 ]}
                 onPress={() => setCategory(option.value)}
               >
-                <Text style={styles.categoryIcon}>{option.icon}</Text>
+                <AppIcon name={option.icon} size={24} color={theme.primary} />
                 <Text
                   style={[
                     styles.categoryLabel,
@@ -257,7 +265,7 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
             onPress={() => setShowDatePicker(true)}
           >
             <Text style={styles.dateButtonText}>{formatDateKeyLong(date)}</Text>
-            <Text style={styles.dateButtonIcon}>📅</Text>
+            <AppIcon name="calendar-outline" size={22} color={theme.primary} />
           </TouchableOpacity>
           {errors.date ? (
             <Text style={styles.errorText}>{errors.date}</Text>
@@ -273,7 +281,7 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
             placeholder="Notas adicionales sobre este gasto..."
             value={note}
             onChangeText={setNote}
-            placeholderTextColor="#A1A1AA"
+            placeholderTextColor={theme.textSecondary}
             autoCapitalize="sentences"
             maxLength={200}
             multiline
@@ -305,14 +313,14 @@ export function ExpenseForm({ mode, expenseId }: ExpenseFormProps) {
           setShowDatePicker(false);
         }}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   scrollView: {
     flex: 1,
@@ -324,7 +332,7 @@ const styles = StyleSheet.create({
   },
   centered: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
@@ -333,11 +341,11 @@ const styles = StyleSheet.create({
   notFoundTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   notFoundText: {
     fontSize: 14,
-    color: '#71717A',
+    color: theme.textSecondary,
     textAlign: 'center',
   },
   header: {
@@ -351,21 +359,22 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   backButtonText: {
-    fontSize: 24,
+    fontSize: 32,
+    lineHeight: 34,
     fontWeight: '300',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   screenTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
     flex: 1,
     textAlign: 'center',
   },
@@ -378,39 +387,39 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6366F1',
+    color: theme.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     fontSize: 17,
-    color: '#18181B',
+    color: theme.text,
   },
   inputError: {
-    borderColor: '#EF4444',
+    borderColor: theme.danger,
   },
   errorText: {
     fontSize: 13,
-    color: '#EF4444',
+    color: theme.danger,
     marginTop: 8,
     marginLeft: 4,
   },
   textArea: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#18181B',
+    color: theme.text,
     minHeight: 90,
     textAlignVertical: 'top',
   },
@@ -423,16 +432,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   categoryButtonSelected: {
-    borderColor: '#6366F1',
-    backgroundColor: '#F0F0FF',
+    borderColor: theme.primary,
+    backgroundColor: theme.primarySoft,
   },
   categoryIcon: {
     fontSize: 18,
@@ -440,19 +449,19 @@ const styles = StyleSheet.create({
   categoryLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   categoryLabelSelected: {
-    color: '#6366F1',
+    color: theme.primary,
     fontWeight: '600',
   },
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
@@ -460,23 +469,23 @@ const styles = StyleSheet.create({
   dateButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#18181B',
+    color: theme.text,
   },
   dateButtonIcon: {
     fontSize: 20,
   },
   dateHint: {
     fontSize: 12,
-    color: '#71717A',
+    color: theme.textSecondary,
     marginTop: 8,
     marginLeft: 4,
   },
   primaryButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 18,
     alignItems: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -484,7 +493,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   primaryButtonDisabled: {
-    backgroundColor: '#A5A6F6',
+    backgroundColor: theme.backgroundElement,
   },
   primaryButtonText: {
     fontSize: 17,

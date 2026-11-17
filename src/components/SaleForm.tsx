@@ -1,7 +1,11 @@
+import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../constants/theme';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,8 +16,8 @@ import {
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
-import { useTheme } from '../hooks/useTheme';
 import { DatePickerModal } from './DatePickerModal';
+import { AppIcon } from './AppIcon';
 import {
   addDays,
   formatDateKeyLong,
@@ -30,10 +34,10 @@ const currencyFormatter = new Intl.NumberFormat('es-MX', {
 });
 
 const PAYMENT_METHODS = [
-  { value: 'efectivo', label: 'Efectivo', icon: '💵' },
-  { value: 'transferencia', label: 'Transferencia', icon: '📱' },
-  { value: 'tarjeta', label: 'Tarjeta', icon: '💳' },
-  { value: 'otro', label: 'Otro', icon: '📦' },
+  { value: 'efectivo', label: 'Efectivo', icon: 'cash-outline' },
+  { value: 'transferencia', label: 'Transferencia', icon: 'phone-portrait-outline' },
+  { value: 'tarjeta', label: 'Tarjeta', icon: 'card-outline' },
+  { value: 'otro', label: 'Otro', icon: 'cube-outline' },
 ] as const;
 
 type PaymentMethod = (typeof PAYMENT_METHODS)[number]['value'];
@@ -57,6 +61,7 @@ const makeKey = () => `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
 export function SaleForm({ mode, saleId }: SaleFormProps) {
   const theme = useTheme();
+  const styles = createStyles(theme);
   const isEditing = mode === 'edit';
   const user = useAuthStore((state) => state.user);
   const db = useDatabase();
@@ -173,35 +178,20 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
     [isEditing, originalQuantities]
   );
 
-  const selectProduct = (productId: string) => {
-    setSelectedProductId(productId);
-    setQuantity('1');
-    setShowProductSearch(false);
-    setSearchQuery('');
-    setError('');
-  };
-
-  const handleAddItem = () => {
-    if (!selectedProductId) {
-      setError('Selecciona un producto');
-      return;
-    }
-
-    const clean = sanitizeDecimal(quantity);
-    const qty = roundQuantity(Number(clean));
-    if (!clean || !Number.isFinite(qty) || qty <= 0) {
+  const addProductQuantity = (productId: string, qty: number): boolean => {
+    if (!Number.isFinite(qty) || qty <= 0) {
       setError('La cantidad debe ser un número mayor a 0');
-      return;
+      return false;
     }
 
-    const product = products.find((p) => p.id === selectedProductId);
+    const product = products.find((p) => p.id === productId);
     if (!product) {
       setError('El producto ya no existe');
-      return;
+      return false;
     }
 
     const alreadyAdded = items
-      .filter((item) => item.product_id === selectedProductId)
+      .filter((item) => item.product_id === productId)
       .reduce((sum, item) => sum + item.quantity, 0);
     const maxStock = availableStock(product.id, product.stock);
 
@@ -211,11 +201,11 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
           alreadyAdded > 0 ? ` (ya agregaste ${alreadyAdded})` : ''
         }`
       );
-      return;
+      return false;
     }
 
     setItems((current) => {
-      const existingIndex = current.findIndex((item) => item.product_id === selectedProductId);
+      const existingIndex = current.findIndex((item) => item.product_id === productId);
       if (existingIndex >= 0) {
         const next = [...current];
         const existing = next[existingIndex];
@@ -241,9 +231,42 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
       ];
     });
 
-    setSelectedProductId(null);
-    setQuantity('1');
-    setError('');
+    return true;
+  };
+
+  const selectProduct = (productId: string) => {
+    if (addProductQuantity(productId, 1)) {
+      setSelectedProductId(null);
+      setQuantity('1');
+      setShowProductSearch(false);
+      setSearchQuery('');
+      setError('');
+    }
+  };
+
+  const handleAddItem = () => {
+    if (!selectedProductId) {
+      setError('Selecciona un producto');
+      return;
+    }
+
+    const clean = sanitizeDecimal(quantity);
+    const qty = roundQuantity(Number(clean));
+    if (addProductQuantity(selectedProductId, qty)) {
+      setSelectedProductId(null);
+      setQuantity('1');
+      setError('');
+    }
+  };
+
+  const canIncreaseItem = (item: DraftItem) => {
+    const product = products.find((candidate) => candidate.id === item.product_id);
+    if (!product) return false;
+    const sameProductQuantity = items
+      .filter((candidate) => candidate.product_id === item.product_id)
+      .reduce((sum, candidate) => sum + candidate.quantity, 0);
+    return roundQuantity(sameProductQuantity + 1) <=
+      roundQuantity(availableStock(product.id, product.stock));
   };
 
   const handleRemoveItem = (key: string) => {
@@ -358,7 +381,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
   if (loadingSale) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator color="#6366F1" size="large" />
+        <ActivityIndicator color={theme.primary} size="large" />
       </View>
     );
   }
@@ -375,7 +398,10 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -395,7 +421,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
           <Text style={styles.sectionLabel}>Fecha</Text>
           <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
             <Text style={styles.dateButtonText}>{formatDateKeyLong(date)}</Text>
-            <Text style={styles.dateButtonIcon}>📅</Text>
+            <AppIcon name="calendar-outline" size={22} color={theme.primary} />
           </TouchableOpacity>
           <Text style={styles.dateHint}>Puedes registrar ventas de hasta 90 días atrás.</Text>
         </View>
@@ -405,7 +431,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
 
           {products.length === 0 ? (
             <View style={styles.emptyProducts}>
-              <Text style={styles.emptyProductsIcon}>📦</Text>
+              <AppIcon name="cube-outline" size={42} color={theme.textSecondary} />
               <Text style={styles.emptyProductsTitle}>Aún no tienes productos</Text>
               <Text style={styles.emptyProductsText}>
                 Agrega productos a tu catálogo antes de registrar una venta.
@@ -427,7 +453,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
                 setShowProductSearch(true);
               }}
               onFocus={() => setShowProductSearch(true)}
-              placeholderTextColor="#A1A1AA"
+              placeholderTextColor={theme.textSecondary}
               autoCorrect={false}
             />
           )}
@@ -564,8 +590,12 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
                         <Text style={styles.stepperButtonText}>−</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={styles.stepperButton}
+                        style={[
+                          styles.stepperButton,
+                          !canIncreaseItem(item) && styles.stepperButtonDisabled,
+                        ]}
                         onPress={() => handleUpdateQuantity(item.key, item.quantity + 1)}
+                        disabled={!canIncreaseItem(item)}
                         accessibilityLabel={`Agregar uno de ${item.product_name}`}
                       >
                         <Text style={styles.stepperButtonText}>+</Text>
@@ -597,7 +627,7 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
                 ]}
                 onPress={() => setPaymentMethod(method.value)}
               >
-                <Text style={styles.paymentMethodIcon}>{method.icon}</Text>
+                <AppIcon name={method.icon} size={20} color={theme.primary} />
                 <Text
                   style={[
                     styles.paymentMethodLabel,
@@ -645,14 +675,14 @@ export function SaleForm({ mode, saleId }: SaleFormProps) {
           setError('');
         }}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   scrollView: {
     flex: 1,
@@ -664,7 +694,7 @@ const styles = StyleSheet.create({
   },
   centered: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
@@ -673,10 +703,10 @@ const styles = StyleSheet.create({
   notFoundTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   backHomeButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingHorizontal: 24,
     paddingVertical: 14,
@@ -697,21 +727,22 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   backButtonText: {
-    fontSize: 24,
+    fontSize: 32,
+    lineHeight: 34,
     fontWeight: '300',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   screenTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
     flex: 1,
     textAlign: 'center',
   },
@@ -721,7 +752,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6366F1',
+    color: theme.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
@@ -730,9 +761,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
@@ -740,14 +771,14 @@ const styles = StyleSheet.create({
   dateButtonText: {
     fontSize: 17,
     fontWeight: '500',
-    color: '#18181B',
+    color: theme.text,
   },
   dateButtonIcon: {
     fontSize: 20,
   },
   dateHint: {
     fontSize: 12,
-    color: '#71717A',
+    color: theme.textSecondary,
     marginTop: 8,
     marginLeft: 4,
   },
@@ -757,48 +788,48 @@ const styles = StyleSheet.create({
   topProductsLabel: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#27272A',
+    color: theme.textSecondary,
     marginBottom: 8,
   },
   topProductsList: {
     gap: 8,
   },
   topProductButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     padding: 12,
   },
   topProductButtonSelected: {
-    borderColor: '#6366F1',
-    backgroundColor: '#F0F0FF',
+    borderColor: theme.primary,
+    backgroundColor: theme.primarySoft,
   },
   topProductButtonName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
     marginBottom: 2,
   },
   topProductButtonPrice: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#6366F1',
+    color: theme.primary,
     marginBottom: 2,
   },
   topProductButtonStock: {
     fontSize: 11,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
   },
   searchInput: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#18181B',
+    color: theme.text,
     marginBottom: 12,
   },
   searchResults: {
@@ -809,16 +840,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     padding: 12,
     gap: 8,
   },
   searchResultItemSelected: {
-    borderColor: '#6366F1',
-    backgroundColor: '#F0F0FF',
+    borderColor: theme.primary,
+    backgroundColor: theme.primarySoft,
   },
   searchResultInfo: {
     flex: 1,
@@ -826,7 +857,7 @@ const styles = StyleSheet.create({
   searchResultName: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#18181B',
+    color: theme.text,
     marginBottom: 2,
   },
   searchResultMeta: {
@@ -838,33 +869,33 @@ const styles = StyleSheet.create({
   searchResultPrice: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6366F1',
+    color: theme.primary,
   },
   searchResultStock: {
     fontSize: 12,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
   },
   searchResultStockLow: {
-    color: '#EF4444',
+    color: theme.danger,
     fontWeight: '600',
   },
   searchResultAdd: {
     fontSize: 22,
     fontWeight: '600',
-    color: '#6366F1',
+    color: theme.primary,
     paddingHorizontal: 6,
   },
   noResults: {
     fontSize: 14,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     textAlign: 'center',
     paddingVertical: 16,
   },
   emptyProducts: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     padding: 20,
     gap: 6,
@@ -876,18 +907,18 @@ const styles = StyleSheet.create({
   emptyProductsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
     textAlign: 'center',
   },
   emptyProductsText: {
     fontSize: 13,
-    color: '#71717A',
+    color: theme.textSecondary,
     textAlign: 'center',
     lineHeight: 19,
   },
   emptyProductsButton: {
     marginTop: 8,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     borderRadius: 10,
     paddingHorizontal: 20,
     paddingVertical: 10,
@@ -898,7 +929,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   quantitySelector: {
-    backgroundColor: '#F0F0FF',
+    backgroundColor: theme.primarySoft,
     borderRadius: 12,
     padding: 16,
     marginTop: 12,
@@ -906,7 +937,7 @@ const styles = StyleSheet.create({
   quantityLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
     marginBottom: 12,
   },
   quantityInputContainer: {
@@ -920,31 +951,31 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quantityButtonText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   quantityInput: {
     width: 80,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     textAlign: 'center',
     fontSize: 18,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
   },
   addItemButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -961,11 +992,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     gap: 8,
   },
   itemInfo: {
@@ -974,12 +1005,12 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
     marginBottom: 2,
   },
   itemPrice: {
     fontSize: 13,
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   itemActions: {
     alignItems: 'flex-end',
@@ -988,7 +1019,7 @@ const styles = StyleSheet.create({
   itemTotal: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#10B981',
+    color: theme.success,
   },
   itemStepper: {
     flexDirection: 'row',
@@ -999,27 +1030,30 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#F4F4F5',
+    backgroundColor: theme.backgroundElement,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  stepperButtonDisabled: {
+    opacity: 0.35,
   },
   stepperButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   removeButton: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: theme.dangerSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   removeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#EF4444',
+    color: theme.danger,
   },
   paymentMethods: {
     flexDirection: 'row',
@@ -1030,16 +1064,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   paymentMethodButtonSelected: {
-    borderColor: '#6366F1',
-    backgroundColor: '#F0F0FF',
+    borderColor: theme.primary,
+    backgroundColor: theme.primarySoft,
   },
   paymentMethodIcon: {
     fontSize: 20,
@@ -1047,10 +1081,10 @@ const styles = StyleSheet.create({
   paymentMethodLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   paymentMethodLabelSelected: {
-    color: '#6366F1',
+    color: theme.primary,
     fontWeight: '600',
   },
   totalContainer: {
@@ -1073,7 +1107,7 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#A1A1AA',
+    color: theme.textSecondary,
   },
   totalAmount: {
     fontSize: 28,
@@ -1086,18 +1120,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   saveButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 18,
     alignItems: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   saveButtonDisabled: {
-    backgroundColor: '#E4E4E7',
+    backgroundColor: theme.backgroundElement,
   },
   saveButtonText: {
     fontSize: 18,
@@ -1106,7 +1140,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    color: '#EF4444',
+    color: theme.danger,
     marginTop: 8,
     marginLeft: 4,
   },

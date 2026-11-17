@@ -1,12 +1,17 @@
 'use client';
+import { useTheme } from '../../hooks/useTheme';
+import type { Theme } from '../../constants/theme';
 
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { getBusinessType } from '../../utils/business';
+import { AppIcon } from '../../components/AppIcon';
 import React from 'react';
 
 export default function TourConfirmationScreen() {
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const { user, completeOnboarding } = useAuthStore();
   const businessType = getBusinessType(user?.businessType);
 
@@ -82,9 +87,16 @@ export default function TourConfirmationScreen() {
         <View style={styles.fieldRow}>
           <View style={styles.fieldInfo}>
             <Text style={styles.fieldLabel}>Giro</Text>
-            <Text style={styles.fieldValue}>
-              {businessType ? `${businessType.icon} ${businessType.label}` : 'No establecido'}
-            </Text>
+            <View style={styles.businessValue}>
+              {businessType ? (
+                <>
+                  <AppIcon name={businessType.icon} size={20} color={theme.primary} />
+                  <Text style={styles.fieldValue}>{businessType.label}</Text>
+                </>
+              ) : (
+                <Text style={styles.fieldValue}>No establecido</Text>
+              )}
+            </View>
           </View>
           <TouchableOpacity style={styles.editButton} onPress={handleEditCategory}>
             <Text style={styles.editButtonText}>Editar</Text>
@@ -99,10 +111,10 @@ export default function TourConfirmationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
     paddingHorizontal: 24,
     justifyContent: 'space-between',
     paddingVertical: 40,
@@ -114,12 +126,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#27272A',
+    color: theme.textSecondary,
     marginTop: 8,
     textAlign: 'center',
   },
@@ -131,10 +143,10 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -146,10 +158,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   fieldsContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     overflow: 'hidden',
     marginBottom: 32,
     shadowColor: '#000',
@@ -171,7 +183,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6366F1',
+    color: theme.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
@@ -179,30 +191,35 @@ const styles = StyleSheet.create({
   fieldValue: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#18181B',
+    color: theme.text,
+  },
+  businessValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   editButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#F4F4F5',
+    backgroundColor: theme.backgroundElement,
     borderRadius: 8,
   },
   editButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6366F1',
+    color: theme.primary,
   },
   divider: {
     height: 1,
-    backgroundColor: '#E4E4E7',
+    backgroundColor: theme.border,
     marginHorizontal: 20,
   },
   startButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 18,
     alignItems: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

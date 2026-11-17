@@ -1,3 +1,4 @@
+import type { Theme } from '../constants/theme';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
@@ -33,6 +34,7 @@ export default function HomeScreen() {
   const user = useAuthStore((state) => state.user);
   const db = useDatabase();
   const theme = useTheme();
+  const styles = createStyles(theme);
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [income, setIncome] = useState({ total: 0, count: 0 });
@@ -356,6 +358,7 @@ function AlertPopup({
   onClose: () => void;
 }) {
   const theme = useTheme();
+  const styles = createStyles(theme);
 
   return (
     <View style={styles.alertOverlay}>
@@ -425,6 +428,7 @@ function WeeklyChart({
   weekStart: string;
 }) {
   const theme = useTheme();
+  const styles = createStyles(theme);
   const chartData = useMemo(() => {
     const start = parseDateKey(weekStart) ?? new Date();
     return Array.from({ length: 7 }, (_, index) => {
@@ -495,10 +499,10 @@ function WeeklyChart({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   scrollView: {
     flex: 1,
@@ -512,11 +516,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   loadingText: {
     fontSize: 16,
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   header: {
     flexDirection: 'row',
@@ -531,11 +535,11 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
   },
   businessName: {
     fontSize: 14,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     marginTop: 2,
     fontWeight: '500',
   },
@@ -543,10 +547,10 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -568,9 +572,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -578,28 +582,29 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   monthNavIcon: {
-    fontSize: 24,
+    fontSize: 32,
+    lineHeight: 34,
     fontWeight: '300',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   monthNavIconDisabled: {
-    color: '#A1A1AA',
+    color: theme.textSecondary,
   },
   monthLabel: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
     minWidth: 170,
     textAlign: 'center',
   },
   card: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -618,21 +623,21 @@ const styles = StyleSheet.create({
   cardLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#27272A',
+    color: theme.textSecondary,
     marginBottom: 4,
   },
   cardValueIncome: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#10B981',
+    color: theme.success,
   },
   cardValueExpense: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#EF4444',
+    color: theme.danger,
   },
   cardBadge: {
-    backgroundColor: '#F4F4F5',
+    backgroundColor: theme.backgroundElement,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -640,7 +645,7 @@ const styles = StyleSheet.create({
   cardBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   cardProfit: {
     backgroundColor: '#27272A',
@@ -662,12 +667,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryAction: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
   },
   secondaryAction: {
-    backgroundColor: '#F4F4F5',
+    backgroundColor: theme.backgroundElement,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
   },
   primaryActionText: {
     color: '#FFFFFF',
@@ -675,7 +680,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   secondaryActionText: {
-    color: '#27272A',
+    color: theme.textSecondary,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -685,21 +690,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 6,
-    backgroundColor: '#FFFBEB',
+    backgroundColor: theme.warningSoft,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: theme.warning,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginBottom: 10,
   },
   alertSummaryLabel: {
-    color: '#92400E',
+    color: theme.warning,
     fontSize: 13,
     fontWeight: '600',
   },
   alertSummaryCount: {
-    color: '#B45309',
+    color: theme.warning,
     fontSize: 15,
     fontWeight: '800',
   },
@@ -712,7 +717,7 @@ const styles = StyleSheet.create({
   profitLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     marginBottom: 4,
   },
   profitValue: {
@@ -720,10 +725,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   profitPositive: {
-    color: '#10B981',
+    color: theme.success,
   },
   profitNegative: {
-    color: '#EF4444',
+    color: theme.danger,
   },
   avgSaleContainer: {
     alignItems: 'flex-end',
@@ -731,7 +736,7 @@ const styles = StyleSheet.create({
   avgSaleLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     marginBottom: 4,
   },
   avgSaleValue: {
@@ -742,7 +747,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
     marginBottom: 16,
   },
   chartContainer: {
@@ -778,10 +783,10 @@ const styles = StyleSheet.create({
   chartDayLabel: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   chartDayLabelToday: {
-    color: '#6366F1',
+    color: theme.primary,
     fontWeight: '700',
   },
   chartLegend: {
@@ -802,7 +807,7 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   topProductsList: {
     gap: 12,
@@ -816,7 +821,7 @@ const styles = StyleSheet.create({
   topProductRank: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#6366F1',
+    color: theme.primary,
     width: 28,
   },
   topProductInfo: {
@@ -825,16 +830,16 @@ const styles = StyleSheet.create({
   topProductName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
   },
   topProductMeta: {
     fontSize: 12,
-    color: '#27272A',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   emptyText: {
     fontSize: 14,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     textAlign: 'center',
     paddingVertical: 20,
   },
@@ -844,21 +849,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: theme.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
     zIndex: 1000,
   },
   alertContainer: {
-    backgroundColor: '#FFFBEB',
+    backgroundColor: theme.warningSoft,
     borderRadius: 20,
     padding: 24,
     width: '100%',
     maxWidth: 340,
     maxHeight: '80%',
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: theme.warning,
   },
   alertScroll: {
     flexGrow: 0,
@@ -878,7 +883,7 @@ const styles = StyleSheet.create({
   alertTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
   },
   alertSection: {
     marginBottom: 16,
@@ -886,7 +891,7 @@ const styles = StyleSheet.create({
   alertSectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: theme.warning,
     marginBottom: 8,
   },
   alertItem: {
@@ -895,20 +900,20 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F4F4F5',
+    borderBottomColor: theme.border,
   },
   alertItemName: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#18181B',
+    color: theme.text,
     flex: 1,
   },
   alertItemValue: {
     fontSize: 14,
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   alertCloseButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',

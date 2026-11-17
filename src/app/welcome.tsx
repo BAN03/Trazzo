@@ -1,14 +1,20 @@
 'use client';
+import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../constants/theme';
 
 import { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
+import { AppLogo } from '../components/AppLogo';
+import { AppIcon } from '../components/AppIcon';
 
 export default function WelcomeScreen() {
   const user = useAuthStore((state) => state.user);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const updateUser = useAuthStore((state) => state.updateUser);
+  const theme = useTheme();
+  const styles = createStyles(theme);
 
   useEffect(() => {
     if (hasHydrated && user?.onboardingCompleted) {
@@ -18,36 +24,36 @@ export default function WelcomeScreen() {
 
   const features = [
     {
-      icon: '📊',
+      icon: 'bar-chart-outline',
       title: 'Registro de Ventas',
       description: 'Registra tus ventas diarias con productos, métodos de pago y fechas.',
     },
     {
-      icon: '💰',
+      icon: 'cash-outline',
       title: 'Control de Gastos',
       description: 'Lleva un registro de todos tus gastos categorizados (renta, servicios, insumos, etc.).',
     },
     {
-      icon: '📦',
+      icon: 'cube-outline',
       title: 'Catálogo e Insumos',
       description: 'Administra tus productos e insumos con stock, precios y alertas de stock bajo.',
     },
     {
-      icon: '📈',
+      icon: 'trending-up-outline',
       title: 'Gráficas y Reportes',
       description: 'Visualiza tus ventas vs gastos semanales y productos más vendidos.',
     },
     {
-      icon: '⚠️',
+      icon: 'alert-circle-outline',
       title: 'Alertas Inteligentes',
       description: 'Recibe notificaciones de stock bajo y productos por caducar.',
     },
     {
-      icon: '🇲🇽',
+      icon: 'flag-outline',
       title: 'Enfocado en México',
       description: 'Moneda MXN, formato de fecha local y español mexicano.',
     },
-  ];
+  ] as const;
 
   const handleStartTour = () => {
     router.push('/tour/name');
@@ -59,12 +65,15 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      contentContainerStyle={styles.contentContainer}
+    >
       <View style={styles.header}>
-        <Image source={require('../../assets/icon.png')} style={styles.logo} />
-        <Text style={styles.appName}>Trazzo</Text>
-        <Text style={styles.welcomeTitle}>¡Bienvenido a Trazzo!</Text>
-        <Text style={styles.welcomeSubtitle}>
+        <AppLogo style={styles.logo} />
+        <Text style={[styles.appName, { color: theme.text }]}>Trazzo</Text>
+        <Text style={[styles.welcomeTitle, { color: theme.text }]}>¡Bienvenido a Trazzo!</Text>
+        <Text style={[styles.welcomeSubtitle, { color: theme.textSecondary }]}>
           La app para que tu emprendimiento crezca con control total
         </Text>
       </View>
@@ -72,7 +81,7 @@ export default function WelcomeScreen() {
       <View style={styles.featuresContainer}>
         {features.map((feature, index) => (
           <View key={index} style={styles.featureCard}>
-            <Text style={styles.featureIcon}>{feature.icon}</Text>
+            <AppIcon name={feature.icon} size={32} color={theme.primary} />
             <Text style={styles.featureTitle}>{feature.title}</Text>
             <Text style={styles.featureDescription}>{feature.description}</Text>
           </View>
@@ -90,10 +99,10 @@ export default function WelcomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   contentContainer: {
     paddingHorizontal: 24,
@@ -113,19 +122,19 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 42,
     fontWeight: '800',
-    color: '#18181B',
+    color: theme.text,
     letterSpacing: -1,
   },
   welcomeTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
     marginTop: 16,
     textAlign: 'center',
   },
   welcomeSubtitle: {
     fontSize: 16,
-    color: '#27272A',
+    color: theme.textSecondary,
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 24,
@@ -137,12 +146,12 @@ const styles = StyleSheet.create({
   featureCard: {
     flexDirection: 'column',
     alignItems:'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 20,
     gap: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -156,23 +165,23 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
     marginTop: 4,
   },
   featureDescription: {
     fontSize: 14,
     textAlign: 'center',
-    color: '#27272A',
+    color: theme.textSecondary,
     marginTop: 4,
     lineHeight: 20,
     flex: 1,
   },
   startButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 18,
     alignItems: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -187,7 +196,7 @@ const styles = StyleSheet.create({
   skipText: {
     textAlign: 'center',
     fontSize: 14,
-    color: '#6366F1',
+    color: theme.primary,
     fontWeight: '500',
   },
 });

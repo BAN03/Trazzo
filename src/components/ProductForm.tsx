@@ -1,7 +1,11 @@
+import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../constants/theme';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -13,8 +17,8 @@ import {
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
-import { useTheme } from '../hooks/useTheme';
 import { DatePickerModal } from './DatePickerModal';
+import { AppIcon } from './AppIcon';
 import { formatDateKeyLong, todayKey } from '../utils/date';
 import { parseAmount, roundQuantity, sanitizeDecimal } from '../utils/numbers';
 
@@ -33,6 +37,7 @@ interface ProductFormProps {
 
 export function ProductForm({ mode, kind, productId }: ProductFormProps) {
   const theme = useTheme();
+  const styles = createStyles(theme);
   const isEditing = mode === 'edit';
   const isSupply = kind === 'supply';
   const user = useAuthStore((state) => state.user);
@@ -206,7 +211,7 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
   if (loadingItem) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator color="#6366F1" size="large" />
+        <ActivityIndicator color={theme.primary} size="large" />
       </View>
     );
   }
@@ -228,7 +233,10 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -256,7 +264,7 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
               setName(value);
               clearError('name');
             }}
-            placeholderTextColor="#A1A1AA"
+            placeholderTextColor={theme.textSecondary}
             autoCapitalize="words"
             autoCorrect={false}
             maxLength={60}
@@ -275,7 +283,7 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
                 setCategory(value);
                 clearError('category');
               }}
-              placeholderTextColor="#A1A1AA"
+              placeholderTextColor={theme.textSecondary}
               autoCapitalize="words"
               autoCorrect={false}
               maxLength={40}
@@ -313,7 +321,7 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
                 clearError('salePrice');
               }}
               keyboardType="decimal-pad"
-              placeholderTextColor="#A1A1AA"
+              placeholderTextColor={theme.textSecondary}
             />
             {errors.salePrice ? <Text style={styles.errorText}>{errors.salePrice}</Text> : null}
           </View>
@@ -332,7 +340,7 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
               clearError('costPrice');
             }}
             keyboardType="decimal-pad"
-            placeholderTextColor="#A1A1AA"
+            placeholderTextColor={theme.textSecondary}
           />
           {errors.costPrice ? <Text style={styles.errorText}>{errors.costPrice}</Text> : null}
         </View>
@@ -349,7 +357,7 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
                 clearError('stock');
               }}
               keyboardType="decimal-pad"
-              placeholderTextColor="#A1A1AA"
+              placeholderTextColor={theme.textSecondary}
             />
             {errors.stock ? <Text style={styles.errorText}>{errors.stock}</Text> : null}
           </View>
@@ -365,7 +373,7 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
                 clearError('minStock');
               }}
               keyboardType="decimal-pad"
-              placeholderTextColor="#A1A1AA"
+              placeholderTextColor={theme.textSecondary}
             />
             {errors.minStock ? <Text style={styles.errorText}>{errors.minStock}</Text> : null}
           </View>
@@ -380,8 +388,8 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
               </Text>
             </View>
             <Switch
-              trackColor={{ false: '#E4E4E7', true: '#6366F1' }}
-              thumbColor={expires ? '#FFFFFF' : '#A1A1AA'}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor={expires ? theme.onPrimary : theme.textSecondary}
               value={expires}
               onValueChange={(value) => {
                 setExpires(value);
@@ -404,7 +412,7 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
               <Text style={[styles.dateButtonText, !expiryDate && styles.dateButtonPlaceholder]}>
                 {expiryDate ? formatDateKeyLong(expiryDate) : 'Seleccionar fecha'}
               </Text>
-              <Text style={styles.dateButtonIcon}>📅</Text>
+              <AppIcon name="calendar-outline" size={22} color={theme.primary} />
             </TouchableOpacity>
             {errors.expiryDate ? <Text style={styles.errorText}>{errors.expiryDate}</Text> : null}
           </View>
@@ -433,14 +441,14 @@ export function ProductForm({ mode, kind, productId }: ProductFormProps) {
           setShowDatePicker(false);
         }}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   scrollView: {
     flex: 1,
@@ -452,7 +460,7 @@ const styles = StyleSheet.create({
   },
   centered: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
@@ -461,11 +469,11 @@ const styles = StyleSheet.create({
   notFoundTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   notFoundText: {
     fontSize: 14,
-    color: '#71717A',
+    color: theme.textSecondary,
     textAlign: 'center',
   },
   header: {
@@ -479,21 +487,22 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   backButtonText: {
-    fontSize: 24,
+    fontSize: 32,
+    lineHeight: 34,
     fontWeight: '300',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   screenTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
     flex: 1,
     textAlign: 'center',
   },
@@ -506,27 +515,27 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6366F1',
+    color: theme.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     fontSize: 17,
-    color: '#18181B',
+    color: theme.text,
   },
   inputError: {
-    borderColor: '#EF4444',
+    borderColor: theme.danger,
   },
   errorText: {
     fontSize: 13,
-    color: '#EF4444',
+    color: theme.danger,
     marginTop: 8,
     marginLeft: 4,
   },
@@ -544,33 +553,33 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
   chipSelected: {
-    borderColor: '#6366F1',
-    backgroundColor: '#F0F0FF',
+    borderColor: theme.primary,
+    backgroundColor: theme.primarySoft,
   },
   chipText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   chipTextSelected: {
-    color: '#6366F1',
+    color: theme.primary,
     fontWeight: '600',
   },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -582,20 +591,20 @@ const styles = StyleSheet.create({
   switchTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
   },
   switchSubtext: {
     fontSize: 12,
-    color: '#71717A',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
@@ -603,21 +612,21 @@ const styles = StyleSheet.create({
   dateButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#18181B',
+    color: theme.text,
   },
   dateButtonPlaceholder: {
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     fontWeight: '400',
   },
   dateButtonIcon: {
     fontSize: 20,
   },
   primaryButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 18,
     alignItems: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -625,7 +634,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   primaryButtonDisabled: {
-    backgroundColor: '#A5A6F6',
+    backgroundColor: theme.backgroundElement,
   },
   primaryButtonText: {
     fontSize: 17,

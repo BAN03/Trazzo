@@ -1,10 +1,11 @@
 'use client';
+import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../constants/theme';
 
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
-import { useTheme } from '../hooks/useTheme';
 import { BottomTabBar } from '../components/BottomTabBar';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
@@ -47,6 +48,7 @@ export default function MovementsScreen() {
   const user = useAuthStore((state) => state.user);
   const db = useDatabase();
   const theme = useTheme();
+  const styles = createStyles(theme);
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'sales' | 'expenses'>('sales');
@@ -427,10 +429,10 @@ export default function MovementsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   scrollView: {
     flex: 1,
@@ -444,11 +446,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   loadingText: {
     fontSize: 16,
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   header: {
     flexDirection: 'row',
@@ -462,16 +464,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
   },
   settingsButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -493,9 +495,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -503,28 +505,29 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   monthNavIcon: {
-    fontSize: 24,
+    fontSize: 32,
+    lineHeight: 34,
     fontWeight: '300',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   monthNavIconDisabled: {
-    color: '#A1A1AA',
+    color: theme.textSecondary,
   },
   monthLabel: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
     minWidth: 140,
     textAlign: 'center',
   },
   tabSelector: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 12,
     padding: 4,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
   },
   tabButton: {
     flex: 1,
@@ -533,8 +536,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tabButtonActive: {
-    backgroundColor: '#6366F1',
-    shadowColor: '#6366F1',
+    backgroundColor: theme.primary,
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -543,18 +546,18 @@ const styles = StyleSheet.create({
   tabButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   tabButtonTextActive: {
     color: '#FFFFFF',
   },
   statsCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -571,7 +574,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#6366F1',
+    color: theme.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
@@ -579,25 +582,25 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
   },
   statValueIncome: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#10B981',
+    color: theme.success,
   },
   statValueExpense: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#EF4444',
+    color: theme.danger,
   },
   addButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -615,11 +618,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -632,7 +635,7 @@ const styles = StyleSheet.create({
   listItemDate: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
     marginBottom: 4,
   },
   listItemMeta: {
@@ -644,16 +647,16 @@ const styles = StyleSheet.create({
   listItemPayment: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   listItemDescription: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   listItemCategory: {
     fontSize: 12,
-    color: '#6366F1',
+    color: theme.primary,
     fontWeight: '500',
   },
   statusBadge: {
@@ -673,27 +676,27 @@ const styles = StyleSheet.create({
   listItemAmount: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#10B981',
+    color: theme.success,
     marginBottom: 2,
   },
   listItemAmountExpense: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#EF4444',
+    color: theme.danger,
     marginBottom: 2,
   },
   listItemCount: {
     fontSize: 12,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
   },
   listItemProducts: {
     fontSize: 12,
-    color: '#71717A',
+    color: theme.textSecondary,
     marginTop: 4,
   },
   editChip: {
     marginTop: 6,
-    backgroundColor: '#F0F0FF',
+    backgroundColor: theme.primarySoft,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -701,25 +704,25 @@ const styles = StyleSheet.create({
   editChipText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#6366F1',
+    color: theme.primary,
   },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 40,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
   },
   emptyText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#27272A',
+    color: theme.textSecondary,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     textAlign: 'center',
   },
 });

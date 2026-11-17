@@ -1,13 +1,16 @@
 'use client';
+import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../constants/theme';
 
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
-import { useTheme } from '../hooks/useTheme';
 import { BottomTabBar } from '../components/BottomTabBar';
+import { AppIcon } from '../components/AppIcon';
 
 export default function TasksScreen() {
   const theme = useTheme();
+  const styles = createStyles(theme);
   const user = useAuthStore((state) => state.user);
 
   return (
@@ -26,7 +29,7 @@ export default function TasksScreen() {
 
         {/* Disabled Notice */}
         <View style={styles.disabledCard}>
-          <Text style={styles.disabledIcon}>✅</Text>
+          <AppIcon name="checkmark-circle-outline" size={48} color={theme.primary} />
           <Text style={styles.disabledTitle}>Sección en desarrollo</Text>
           <Text style={styles.disabledText}>
             La lista de tareas y recordatorios estará disponible
@@ -34,19 +37,19 @@ export default function TasksScreen() {
           </Text>
           <View style={styles.disabledFeatures}>
             <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>📝</Text>
+              <AppIcon name="create-outline" size={22} color={theme.primary} />
               <Text style={styles.featureText}>Crear tareas con fecha límite</Text>
             </View>
             <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>🔔</Text>
+              <AppIcon name="notifications-outline" size={22} color={theme.primary} />
               <Text style={styles.featureText}>Notificaciones de recordatorio</Text>
             </View>
             <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>✅</Text>
+              <AppIcon name="checkmark-circle-outline" size={22} color={theme.primary} />
               <Text style={styles.featureText}>Marcar como completada</Text>
             </View>
             <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>📅</Text>
+              <AppIcon name="calendar-outline" size={22} color={theme.primary} />
               <Text style={styles.featureText}>Vista de calendario</Text>
             </View>
           </View>
@@ -54,7 +57,7 @@ export default function TasksScreen() {
 
         {/* Placeholder for future tasks */}
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📋</Text>
+          <AppIcon name="clipboard-outline" size={48} color={theme.textSecondary} />
           <Text style={styles.emptyTitle}>No hay tareas aún</Text>
           <Text style={styles.emptyText}>
             Cuando esta función esté disponible, podrás agregar
@@ -68,10 +71,10 @@ export default function TasksScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   scrollView: {
     flex: 1,
@@ -93,21 +96,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
   },
   subtitle: {
     fontSize: 14,
-    color: '#27272A',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   settingsButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -119,12 +122,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   disabledCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 24,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     alignItems: 'center',
   },
   disabledIcon: {
@@ -134,13 +137,13 @@ const styles = StyleSheet.create({
   disabledTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   disabledText: {
     fontSize: 14,
-    color: '#27272A',
+    color: theme.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 20,
@@ -154,7 +157,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     padding: 12,
-    backgroundColor: '#F4F4F5',
+    backgroundColor: theme.backgroundElement,
     borderRadius: 12,
   },
   featureIcon: {
@@ -163,15 +166,15 @@ const styles = StyleSheet.create({
   featureText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   emptyState: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 32,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
   },
   emptyIcon: {
     fontSize: 48,
@@ -180,13 +183,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },

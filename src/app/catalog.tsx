@@ -1,4 +1,6 @@
 'use client';
+import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../constants/theme';
 
 import {
   View,
@@ -15,10 +17,10 @@ import {
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
-import { useTheme } from '../hooks/useTheme';
 import { BottomTabBar } from '../components/BottomTabBar';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { formatQuantity, sanitizeDecimal } from '../utils/numbers';
+import { AppIcon } from '../components/AppIcon';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -30,6 +32,7 @@ export default function CatalogScreen() {
   const user = useAuthStore((state) => state.user);
   const db = useDatabase();
   const theme = useTheme();
+  const styles = createStyles(theme);
 
   const [activeTab, setActiveTab] = useState<'products' | 'supplies'>('products');
   const [searchQuery, setSearchQuery] = useState('');
@@ -174,21 +177,20 @@ export default function CatalogScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.title}>Catálogo</Text>
-            <Text style={styles.subtitle}>Productos e insumos</Text>
+            <Text style={[styles.title, {color: theme.text}]}>Catálogo</Text>
+            <Text style={[styles.subtitle, {color: theme.text}]}>Productos e insumos</Text>
           </View>
           <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/settings')}>
             <Text style={styles.avatarText}>{user?.name?.charAt(0).toUpperCase() || 'U'}</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
+        <View style={styles.summaryRow}>
+            <View style={styles.summaryItemCard}>
               <Text style={styles.summaryLabel}>Valor de inventario</Text>
               <Text style={styles.summaryValue}>{currencyFormatter.format(inventoryValue)}</Text>
             </View>
-            <View style={styles.summaryItem}>
+            <View style={styles.summaryItemCard}>
               <Text style={styles.summaryLabel}>Stock bajo</Text>
               <Text
                 style={[styles.summaryValue, lowStockCount > 0 && styles.summaryValueWarning]}
@@ -196,7 +198,6 @@ export default function CatalogScreen() {
                 {lowStockCount} {lowStockCount === 1 ? 'artículo' : 'artículos'}
               </Text>
             </View>
-          </View>
         </View>
 
         <View style={styles.tabSelector}>
@@ -228,7 +229,7 @@ export default function CatalogScreen() {
           placeholder="Buscar por nombre o categoría..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholderTextColor="#A1A1AA"
+          placeholderTextColor={theme.textSecondary}
           autoCorrect={false}
         />
 
@@ -243,7 +244,7 @@ export default function CatalogScreen() {
 
         {filteredProducts.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📦</Text>
+            <AppIcon name="cube-outline" size={48} color={theme.textSecondary} />
             <Text style={styles.emptyText}>
               {searchQuery
                 ? 'Sin resultados'
@@ -331,7 +332,7 @@ export default function CatalogScreen() {
               }}
               keyboardType="decimal-pad"
               placeholder="1"
-              placeholderTextColor="#A1A1AA"
+              placeholderTextColor={theme.textSecondary}
               autoFocus
               selectTextOnFocus
               maxLength={12}
@@ -352,10 +353,10 @@ export default function CatalogScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   scrollView: {
     flex: 1,
@@ -369,11 +370,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   loadingText: {
     fontSize: 16,
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   header: {
     flexDirection: 'row',
@@ -387,21 +388,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
   },
   subtitle: {
     fontSize: 14,
-    color: '#27272A',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   settingsButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -412,30 +413,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  summaryCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
+  summaryRow: {
+    flexDirection: 'row',
+    gap: 12,
     marginBottom: 16,
+  },
+  summaryItemCard: {
+    flex: 1,
+    backgroundColor: theme.card,
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  summaryItem: {
-    flex: 1,
-  },
   summaryLabel: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#6366F1',
+    color: theme.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
@@ -443,19 +442,19 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
   },
   summaryValueWarning: {
-    color: '#EF4444',
+    color: theme.danger,
   },
   tabSelector: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 12,
     padding: 4,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
   },
   tabButton: {
     flex: 1,
@@ -464,8 +463,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tabButtonActive: {
-    backgroundColor: '#6366F1',
-    shadowColor: '#6366F1',
+    backgroundColor: theme.primary,
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -474,29 +473,29 @@ const styles = StyleSheet.create({
   tabButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   tabButtonTextActive: {
     color: '#FFFFFF',
   },
   searchInput: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#18181B',
+    color: theme.text,
     marginBottom: 12,
   },
   addButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -514,11 +513,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -531,7 +530,7 @@ const styles = StyleSheet.create({
   listItemName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
     marginBottom: 4,
   },
   listItemMeta: {
@@ -542,8 +541,8 @@ const styles = StyleSheet.create({
   listItemCategory: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#6366F1',
-    backgroundColor: '#F0F0FF',
+    color: theme.primary,
+    backgroundColor: theme.primarySoft,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 20,
@@ -551,21 +550,21 @@ const styles = StyleSheet.create({
   listItemPrice: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   listItemStock: {
     fontSize: 12,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
   },
   listItemStockLow: {
-    color: '#EF4444',
+    color: theme.danger,
     fontWeight: '600',
   },
   listItemRight: {
     marginLeft: 12,
   },
   buyButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: theme.success,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -578,10 +577,10 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 40,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
   },
   emptyIcon: {
     fontSize: 48,
@@ -590,50 +589,50 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#27272A',
+    color: theme.textSecondary,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(24, 24, 27, 0.45)',
+    backgroundColor: theme.overlay,
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
   modalCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 20,
     padding: 24,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: '#71717A',
+    color: theme.textSecondary,
     marginTop: 4,
     marginBottom: 16,
   },
   modalInput: {
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 18,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
   },
   modalError: {
     fontSize: 13,
-    color: '#EF4444',
+    color: theme.danger,
     marginTop: 8,
   },
   modalActions: {
@@ -646,19 +645,19 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     alignItems: 'center',
   },
   modalCancelText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   modalConfirm: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#10B981',
+    backgroundColor: theme.success,
     alignItems: 'center',
   },
   modalConfirmText: {

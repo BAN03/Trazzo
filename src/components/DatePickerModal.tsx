@@ -1,3 +1,5 @@
+import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../constants/theme';
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MONTHS_ES,
@@ -38,6 +40,8 @@ export function DatePickerModal({
   onClose,
   onSelect,
 }: DatePickerModalProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const fallback = useMemo(() => {
     const today = todayKey();
     if (isWithinRange(today, minimumDate, maximumDate)) return today;
@@ -170,22 +174,22 @@ export function DatePickerModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(24, 24, 27, 0.45)',
+    backgroundColor: theme.overlay,
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 20,
     padding: 20,
   },
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -199,7 +203,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#F4F4F5',
+    backgroundColor: theme.backgroundElement,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -207,14 +211,14 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   navIcon: {
-    fontSize: 22,
-    lineHeight: 24,
-    color: '#27272A',
+    fontSize: 32,
+    lineHeight: 34,
+    color: theme.textSecondary,
   },
   monthLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
   },
   weekHeader: {
     flexDirection: 'row',
@@ -225,7 +229,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 11,
     fontWeight: '600',
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     paddingVertical: 4,
   },
   grid: {
@@ -246,20 +250,21 @@ const styles = StyleSheet.create({
   },
   cellToday: {
     borderWidth: 1,
-    borderColor: '#6366F1',
+    borderColor: theme.primary,
   },
   cellSelected: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
   },
   cellText: {
     fontSize: 15,
-    color: '#18181B',
+    color: theme.text,
   },
   cellTextMuted: {
-    color: '#D4D4D8',
+    color: theme.textSecondary,
+    opacity: 0.5,
   },
   cellTextDisabled: {
-    color: '#E4E4E7',
+    color: theme.border,
   },
   cellTextSelected: {
     color: '#FFFFFF',
@@ -275,19 +280,19 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     alignItems: 'center',
   },
   cancelText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   confirmButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     alignItems: 'center',
   },
   confirmText: {

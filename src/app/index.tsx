@@ -1,6 +1,7 @@
+import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../constants/theme';
 import {
   ActivityIndicator,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -8,27 +9,32 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
+import { AppLogo } from '../components/AppLogo';
 
 export default function PrimerArranque() {
   // La redirección a Inicio o al onboarding la resuelve `Stack.Protected`
   // en el layout raíz según el estado de la sesión.
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  const theme = useTheme();
+  const styles = createStyles(theme);
 
   if (!hasHydrated) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.appName}>Trazzo</Text>
-        <ActivityIndicator color="#6366F1" size="large" style={styles.loader} />
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <Text style={[styles.appName, { color: theme.text }]}>Trazzo</Text>
+        <ActivityIndicator color={theme.primary} size="large" style={styles.loader} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.logoContainer}>
-        <Image source={require('../../assets/icon.png')} style={styles.logo} />
-        <Text style={styles.appName}>Trazzo</Text>
-        <Text style={styles.appSubtitle}>Tu negocio, bajo control</Text>
+        <AppLogo style={styles.logo} />
+        <Text style={[styles.appName, { color: theme.text }]}>Trazzo</Text>
+        <Text style={[styles.appSubtitle, { color: theme.textSecondary }]}>
+          Tu negocio, bajo control
+        </Text>
       </View>
 
       <View style={styles.buttonsContainer}>
@@ -48,10 +54,10 @@ export default function PrimerArranque() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
     paddingHorizontal: 24,
     justifyContent: 'center',
   },
@@ -68,12 +74,12 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 44,
     fontWeight: '800',
-    color: '#18181B',
+    color: theme.text,
     letterSpacing: -1,
   },
   appSubtitle: {
     fontSize: 18,
-    color: '#27272A',
+    color: theme.textSecondary,
     marginTop: 8,
     fontWeight: '400',
   },
@@ -85,11 +91,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   primaryButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -103,7 +109,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -111,12 +117,12 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   helperText: {
     marginTop: 24,
     textAlign: 'center',
     fontSize: 12,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
   },
 });

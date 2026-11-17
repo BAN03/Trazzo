@@ -1,9 +1,10 @@
+import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../constants/theme';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { useDatabase } from '../hooks/useDatabase';
-import { useTheme } from '../hooks/useTheme';
 import { BottomTabBar } from '../components/BottomTabBar';
 import {
   canGoToNextMonth,
@@ -14,6 +15,7 @@ import {
   toDateKey,
 } from '../utils/date';
 import { formatQuantity } from '../utils/numbers';
+import { AppIcon } from '../components/AppIcon';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -50,6 +52,7 @@ export default function ReportsScreen() {
   const user = useAuthStore((state) => state.user);
   const db = useDatabase();
   const theme = useTheme();
+  const styles = createStyles(theme);
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [income, setIncome] = useState({ total: 0, count: 0 });
@@ -395,7 +398,7 @@ export default function ReportsScreen() {
         </View>
 
         <View style={styles.noteCard}>
-          <Text style={styles.noteIcon}>📊</Text>
+          <AppIcon name="bar-chart-outline" size={28} color={theme.primary} />
           <Text style={styles.noteText}>
             La exportación a Excel y los reportes avanzados llegarán en una próxima actualización.
           </Text>
@@ -407,10 +410,10 @@ export default function ReportsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   scrollView: {
     flex: 1,
@@ -424,11 +427,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   loadingText: {
     fontSize: 16,
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   header: {
     flexDirection: 'row',
@@ -442,21 +445,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
   },
   subtitle: {
     fontSize: 14,
-    color: '#27272A',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   settingsButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -471,10 +474,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     paddingHorizontal: 8,
     paddingVertical: 8,
     marginBottom: 16,
@@ -490,17 +493,18 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   monthNavIcon: {
-    fontSize: 24,
+    fontSize: 32,
+    lineHeight: 34,
     fontWeight: '300',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   monthNavIconDisabled: {
-    color: '#A1A1AA',
+    color: theme.textSecondary,
   },
   monthLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -509,16 +513,16 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     padding: 16,
   },
   summaryLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#71717A',
+    color: theme.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 6,
@@ -526,16 +530,16 @@ const styles = StyleSheet.create({
   summaryValueIncome: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#10B981',
+    color: theme.success,
   },
   summaryValueExpense: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#EF4444',
+    color: theme.danger,
   },
   summaryMeta: {
     fontSize: 12,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     marginTop: 4,
   },
   profitCard: {
@@ -550,7 +554,7 @@ const styles = StyleSheet.create({
   profitLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#A1A1AA',
+    color: theme.textSecondary,
   },
   profitValue: {
     fontSize: 28,
@@ -558,17 +562,17 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   profitPositive: {
-    color: '#10B981',
+    color: theme.success,
   },
   profitNegative: {
-    color: '#EF4444',
+    color: theme.danger,
   },
   marginBadge: {
     alignItems: 'flex-end',
   },
   marginLabel: {
     fontSize: 12,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   marginValue: {
@@ -577,22 +581,22 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     padding: 16,
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
     marginBottom: 12,
   },
   emptyText: {
     fontSize: 14,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     textAlign: 'center',
     paddingVertical: 12,
   },
@@ -617,14 +621,14 @@ const styles = StyleSheet.create({
   chartBar: {
     width: 12,
     borderRadius: 4,
-    backgroundColor: '#10B981',
+    backgroundColor: theme.success,
   },
   chartBarExpense: {
     backgroundColor: '#EF4444',
   },
   chartLabel: {
     fontSize: 11,
-    color: '#71717A',
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   chartLegend: {
@@ -645,7 +649,7 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: '#71717A',
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   rankList: {
@@ -663,28 +667,28 @@ const styles = StyleSheet.create({
   rankName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
     flex: 1,
   },
   rankValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   rankMeta: {
     fontSize: 12,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
   },
   barTrack: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#F4F4F5',
+    backgroundColor: theme.backgroundElement,
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
     borderRadius: 4,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
   },
   inventoryRow: {
     flexDirection: 'row',
@@ -692,7 +696,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F4F4F5',
+    borderBottomColor: theme.border,
     gap: 12,
   },
   inventoryRowLast: {
@@ -704,19 +708,19 @@ const styles = StyleSheet.create({
   },
   inventoryLabel: {
     fontSize: 14,
-    color: '#27272A',
+    color: theme.textSecondary,
     flex: 1,
   },
   inventoryValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
   },
   noteCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#F0F0FF',
+    backgroundColor: theme.primarySoft,
     borderRadius: 12,
     padding: 14,
   },
@@ -726,7 +730,7 @@ const styles = StyleSheet.create({
   noteText: {
     flex: 1,
     fontSize: 13,
-    color: '#4F46E5',
+    color: theme.textSecondary,
     lineHeight: 19,
   },
 });

@@ -1,11 +1,24 @@
 'use client';
+import { useTheme } from '../../hooks/useTheme';
+import type { Theme } from '../../constants/theme';
 
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Keyboard } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Keyboard,
+} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import React from 'react';
 
 export default function TourNameScreen() {
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const { updateUser, user } = useAuthStore();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const isEditing = edit === '1';
@@ -40,7 +53,10 @@ export default function TourNameScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={styles.header}>
         <Text style={styles.stepText}>{isEditing ? 'Editar nombre' : 'Paso 1 de 3'}</Text>
         <Text style={styles.title}>¿Cómo te llamas?</Text>
@@ -58,7 +74,7 @@ export default function TourNameScreen() {
             if (error) setError('');
           }}
           placeholder="Tu nombre"
-          placeholderTextColor="#A1A1AA"
+          placeholderTextColor={theme.textSecondary}
           autoCapitalize="words"
           autoCorrect={false}
           maxLength={50}
@@ -77,14 +93,14 @@ export default function TourNameScreen() {
       >
         <Text style={styles.continueButtonText}>{isEditing ? 'Guardar' : 'Confirmar'}</Text>
       </TouchableOpacity>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
     paddingHorizontal: 24,
     justifyContent: 'space-between',
     paddingVertical: 40,
@@ -95,18 +111,18 @@ const styles = StyleSheet.create({
   stepText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6366F1',
+    color: theme.primary,
     marginBottom: 8,
   },
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
     lineHeight: 40,
   },
   subtitle: {
     fontSize: 16,
-    color: '#27272A',
+    color: theme.textSecondary,
     marginTop: 8,
     lineHeight: 24,
   },
@@ -114,14 +130,14 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 2,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     fontSize: 18,
-    color: '#18181B',
+    color: theme.text,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -130,7 +146,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    color: '#EF4444',
+    color: theme.danger,
     marginTop: 8,
     marginLeft: 4,
   },
@@ -140,15 +156,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   continueButtonActive: {
-    backgroundColor: '#6366F1',
-    shadowColor: '#6366F1',
+    backgroundColor: theme.primary,
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   continueButtonDisabled: {
-    backgroundColor: '#E4E4E7',
+    backgroundColor: theme.backgroundElement,
   },
   continueButtonText: {
     fontSize: 18,

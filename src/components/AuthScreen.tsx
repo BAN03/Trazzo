@@ -1,8 +1,10 @@
+import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../constants/theme';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
-import { useTheme } from '../hooks/useTheme';
+import { AppLogo } from './AppLogo';
 
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? '';
 const IS_GOOGLE_CONFIGURED =
@@ -16,6 +18,7 @@ interface AuthScreenProps {
 
 export function AuthScreen({ mode }: AuthScreenProps) {
   const theme = useTheme();
+  const styles = createStyles(theme);
   const isLogin = mode === 'login';
   const { user, hasHydrated, loginWithGoogle, registerWithGoogle, continueAsLocal } =
     useAuthStore();
@@ -135,6 +138,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.logoContainer}>
+        <AppLogo style={styles.logo} />
         <Text style={styles.appName}>Trazzo</Text>
         <Text style={styles.appSubtitle}>
           {isLogin ? 'Inicia sesión para continuar' : 'Crea tu cuenta para empezar'}
@@ -147,7 +151,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator color="#18181B" />
+          <ActivityIndicator color={theme.text} />
         ) : (
           <>
             <View style={styles.googleIcon}>
@@ -171,10 +175,10 @@ export function AuthScreen({ mode }: AuthScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
     paddingHorizontal: 24,
     justifyContent: 'center',
   },
@@ -182,15 +186,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 48,
   },
+  logo: {
+    width: 96,
+    height: 96,
+    borderRadius: 24,
+    marginBottom: 20,
+  },
   appName: {
     fontSize: 48,
     fontWeight: '800',
-    color: '#18181B',
+    color: theme.text,
     letterSpacing: -1,
   },
   appSubtitle: {
     fontSize: 18,
-    color: '#27272A',
+    color: theme.textSecondary,
     marginTop: 8,
     fontWeight: '400',
     textAlign: 'center',
@@ -199,9 +209,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -219,19 +229,19 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#F4F4F5',
+    backgroundColor: theme.backgroundElement,
     alignItems: 'center',
     justifyContent: 'center',
   },
   googleIconText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   googleButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
   },
   skipButton: {
     alignItems: 'center',
@@ -240,12 +250,12 @@ const styles = StyleSheet.create({
   },
   skipButtonText: {
     fontSize: 16,
-    color: '#6366F1',
+    color: theme.primary,
     fontWeight: '600',
   },
   helperText: {
     fontSize: 12,
-    color: '#A1A1AA',
+    color: theme.textSecondary,
     textAlign: 'center',
     marginTop: 12,
   },

@@ -1,8 +1,9 @@
+import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../constants/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../hooks/useTheme';
 
 export type TabKey = 'home' | 'movements' | 'catalog' | 'tasks' | 'reports';
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -48,6 +49,7 @@ const TABS: {
 export function BottomTabBar({ active }: { active: TabKey }) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const styles = createStyles(theme);
 
   return (
     <View
@@ -94,16 +96,16 @@ export function BottomTabBar({ active }: { active: TabKey }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   tabBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderTopWidth: 1,
-    borderTopColor: '#E4E4E7',
+    borderTopColor: theme.border,
     paddingTop: 8,
     paddingHorizontal: 8,
     justifyContent: 'space-around',

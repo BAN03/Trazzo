@@ -1,23 +1,26 @@
+import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../constants/theme';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../hooks/useAuthStore';
-import { useTheme } from '../hooks/useTheme';
 import { getBusinessTypeLabel } from '../utils/business';
+import { AppIcon } from '../components/AppIcon';
 
 const APP_VERSION = '1.0.0';
 
 const UPCOMING_FEATURES = [
-  { icon: '👥', label: 'Registro de empleados', description: 'Administra a tu equipo de trabajo' },
-  { icon: '✅', label: 'Lista de tareas', description: 'Recordatorios para tu negocio' },
-  { icon: '☁️', label: 'Respaldo en Google Drive', description: 'Copia de seguridad en la nube' },
-  { icon: '📊', label: 'Reportes en Excel', description: 'Exporta tus ventas a una hoja de cálculo' },
-  { icon: '🔔', label: 'Notificaciones', description: 'Avisos de stock bajo y caducidad' },
-];
+  { icon: 'people-outline', label: 'Registro de empleados', description: 'Administra a tu equipo de trabajo' },
+  { icon: 'checkmark-circle-outline', label: 'Lista de tareas', description: 'Recordatorios para tu negocio' },
+  { icon: 'cloud-outline', label: 'Respaldo en Google Drive', description: 'Copia de seguridad en la nube' },
+  { icon: 'bar-chart-outline', label: 'Reportes en Excel', description: 'Exporta tus ventas a una hoja de cálculo' },
+  { icon: 'notifications-outline', label: 'Notificaciones', description: 'Avisos de stock bajo y caducidad' },
+] as const;
 
 export default function SettingsScreen() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const theme = useTheme();
+  const styles = createStyles(theme);
 
   const initial = user?.name?.charAt(0).toUpperCase() || 'U';
 
@@ -101,7 +104,7 @@ export default function SettingsScreen() {
                 index === UPCOMING_FEATURES.length - 1 && styles.featureRowLast,
               ]}
             >
-              <Text style={styles.featureIcon}>{feature.icon}</Text>
+              <AppIcon name={feature.icon} size={22} color={theme.primary} />
               <View style={styles.featureInfo}>
                 <Text style={styles.featureLabel}>{feature.label}</Text>
                 <Text style={styles.featureDescription}>{feature.description}</Text>
@@ -134,7 +137,7 @@ export default function SettingsScreen() {
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutIcon}>🚪</Text>
+          <AppIcon name="log-out-outline" size={20} color={theme.danger} />
           <Text style={styles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -142,10 +145,10 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.background,
   },
   scrollView: {
     flex: 1,
@@ -166,16 +169,17 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   backButtonText: {
-    fontSize: 24,
+    fontSize: 32,
+    lineHeight: 34,
     fontWeight: '300',
-    color: '#27272A',
+    color: theme.textSecondary,
   },
   headerSpacer: {
     width: 44,
@@ -183,15 +187,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
     flex: 1,
     textAlign: 'center',
   },
   profileCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     padding: 24,
     alignItems: 'center',
     marginBottom: 16,
@@ -200,7 +204,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -213,16 +217,16 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
   },
   profileEmail: {
     fontSize: 14,
-    color: '#71717A',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   profileBusiness: {
     fontSize: 14,
-    color: '#6366F1',
+    color: theme.primary,
     fontWeight: '500',
     marginTop: 6,
     textAlign: 'center',
@@ -230,7 +234,7 @@ const styles = StyleSheet.create({
   editProfileButton: {
     marginTop: 16,
     borderWidth: 2,
-    borderColor: '#6366F1',
+    borderColor: theme.primary,
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 10,
@@ -238,25 +242,25 @@ const styles = StyleSheet.create({
   editProfileButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#6366F1',
+    color: theme.primary,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+    borderColor: theme.border,
     padding: 20,
     marginBottom: 16,
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#18181B',
+    color: theme.text,
     marginBottom: 8,
   },
   cardSubtitle: {
     fontSize: 13,
-    color: '#71717A',
+    color: theme.textSecondary,
     lineHeight: 20,
     marginBottom: 8,
   },
@@ -266,7 +270,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F4F4F5',
+    borderBottomColor: theme.border,
     gap: 12,
   },
   infoRowLast: {
@@ -278,12 +282,12 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 14,
-    color: '#27272A',
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   infoValue: {
     fontSize: 14,
-    color: '#71717A',
+    color: theme.textSecondary,
     flexShrink: 1,
     textAlign: 'right',
   },
@@ -293,7 +297,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F4F4F5',
+    borderBottomColor: theme.border,
   },
   featureRowLast: {
     borderBottomWidth: 0,
@@ -308,15 +312,15 @@ const styles = StyleSheet.create({
   featureLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#18181B',
+    color: theme.text,
   },
   featureDescription: {
     fontSize: 12,
-    color: '#71717A',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   badge: {
-    backgroundColor: '#F0F0FF',
+    backgroundColor: theme.primarySoft,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -324,7 +328,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#6366F1',
+    color: theme.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
@@ -333,11 +337,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: theme.dangerSoft,
     borderRadius: 12,
     paddingVertical: 16,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: theme.danger,
   },
   logoutIcon: {
     fontSize: 18,
@@ -345,6 +349,6 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#EF4444',
+    color: theme.danger,
   },
 });
